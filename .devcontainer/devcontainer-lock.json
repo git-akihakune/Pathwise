@@ -1,0 +1,19 @@
+{
+  "features": {
+    "ghcr.io/devcontainers-extra/features/claude-code:2": {
+      "version": "2.0.3",
+      "resolved": "ghcr.io/devcontainers-extra/features/claude-code@sha256:e119fb3524e9e55d47b84ee32b20085dbeae66f08d8e298e59c57a94f02d5b35",
+      "integrity": "sha256:e119fb3524e9e55d47b84ee32b20085dbeae66f08d8e298e59c57a94f02d5b35"
+    },
+    "ghcr.io/devcontainers/features/nix:1": {
+      "version": "1.4.0",
+      "resolved": "ghcr.io/devcontainers/features/nix@sha256:92bde69ceec2ac0fe75bcce99b754f8867bf93bef77c9ace0f49a4296473c329",
+      "integrity": "sha256:92bde69ceec2ac0fe75bcce99b754f8867bf93bef77c9ace0f49a4296473c329"
+    },
+    "ghcr.io/devcontainers/features/node:2": {
+      "version": "2.1.1",
+      "resolved": "ghcr.io/devcontainers/features/node@sha256:2a19d3b0b3879437637cfd292eb29fee0afcfbe6364e33db9afc4f80c5c1f956",
+      "integrity": "sha256:2a19d3b0b3879437637cfd292eb29fee0afcfbe6364e33db9afc4f80c5c1f956"
+    }
+  }
+}
