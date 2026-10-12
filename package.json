@@ -13,13 +13,18 @@
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run --project unit",
     "test:int": "vitest run --project integration",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "dev:db": "docker compose -f compose.dev.yaml up -d --wait",
+    "dev:init": "tsx --env-file=dev.env apps/worker/src/main.ts init",
+    "dev:worker": "tsx watch --env-file=dev.env apps/worker/src/main.ts worker",
+    "dev": "pnpm dev:db && pnpm dev:init && pnpm run --parallel \"/^dev:(web|worker)$/\""
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
     "@testcontainers/postgresql": "^12.2.0",
     "@types/node": "^24.0.0",
     "drizzle-orm": "^0.45.4",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "vitest": "^5.0.4"
   }
