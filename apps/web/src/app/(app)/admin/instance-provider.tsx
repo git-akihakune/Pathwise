@@ -22,12 +22,17 @@ export function InstanceProvider({
 }) {
   // Changing the key remounts the form, which clears the key field after a save or cancel.
   const [formKey, setFormKey] = useState(0);
-  const [outcome, setOutcome] = useState<ProviderFormState>();
+  // Probe results are shown for the latest save or Test; save errors are shown by the form itself,
+  // Test errors by `testError`.
+  const [result, setResult] = useState<NonNullable<ProviderFormState>["result"]>();
+  const [testError, setTestError] = useState<string>();
   const [pending, start] = useTransition();
 
   async function save(prev: ProviderFormState, fd: FormData) {
+    setResult(undefined);
+    setTestError(undefined);
     const next = await saveInstanceProviderAction(prev, fd);
-    setOutcome(next);
+    setResult(next?.result);
     if (next?.result) setFormKey((k) => k + 1);
     return next;
   }
@@ -53,7 +58,11 @@ export function InstanceProvider({
             disabled={pending}
             onClick={() =>
               start(async () => {
-                setOutcome(await testInstanceProviderAction());
+                setResult(undefined);
+                setTestError(undefined);
+                const next = await testInstanceProviderAction();
+                setResult(next?.result);
+                setTestError(next?.error);
               })
             }
           >
@@ -61,8 +70,8 @@ export function InstanceProvider({
           </Button>
         </div>
       )}
-      {outcome?.result && <ProbeResults {...outcome.result} />}
-      {outcome?.error && !config && <Alert variant="destructive">{outcome.error}</Alert>}
+      {testError && <Alert variant="destructive">{testError}</Alert>}
+      {result && <ProbeResults {...result} />}
       <ProviderForm
         key={`${config?.id ?? "new"}-${formKey}`}
         scope="instance"
