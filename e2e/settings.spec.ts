@@ -1,20 +1,12 @@
-// Runs after admin.spec.ts (project dependency) with LLM_MODE=mock.
-import { expect, type Page, test } from "@playwright/test";
+// Runs after admin.spec.ts (project dependency) with LLM_MODE=mock, signed in as Ada (domain.setup.ts).
+import { expect, test } from "@playwright/test";
 
 test.describe.configure({ mode: "serial" });
 const KEY = "sk-test-0000000000001234";
 const CONNECT = "Connect an AI provider to use the coach";
 
-async function signInAsAda(page: Page) {
-  await page.goto("/sign-in");
-  await page.getByLabel("Email").fill("ada@example.com");
-  await page.getByLabel("Password").fill("a-very-long-password");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("heading", { name: /^Welcome, / })).toBeVisible();
-}
-
 test("a user without a provider is prompted to connect one", async ({ page }) => {
-  await signInAsAda(page);
+  await page.goto("/");
   await expect(page.getByText(CONNECT)).toBeVisible();
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
@@ -24,7 +16,7 @@ test("a user without a provider is prompted to connect one", async ({ page }) =>
 });
 
 test("add, test and activate an OpenAI provider (Review Focus 5)", async ({ page }) => {
-  await signInAsAda(page);
+  await page.goto("/");
   await page.goto("/settings");
   await page.getByLabel("Provider", { exact: true }).click();
   await page.getByRole("option", { name: "OpenAI", exact: true }).click();
@@ -47,7 +39,7 @@ test("add, test and activate an OpenAI provider (Review Focus 5)", async ({ page
 });
 
 test("coach settings persist", async ({ page }) => {
-  await signInAsAda(page);
+  await page.goto("/");
   await page.goto("/settings");
   await page.getByLabel("Blunt", { exact: true }).check();
   await page.getByLabel("Timezone").selectOption("Europe/Berlin");
