@@ -2,10 +2,11 @@ import { type BetterAuthPlugin, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
 import { admin } from "better-auth/plugins";
+import { eq } from "drizzle-orm";
 import type { AppConfig } from "../config";
 import { type Db, schema } from "../db";
 import { getInstanceSettings } from "../instance";
-import { findUsableInvite, markInviteUsed } from "../invites";
+import { findUsableInvite, markInviteUsed, normalizeEmail } from "../invites";
 import { evaluateSignup, type InviteCheck } from "./policy";
 import { getSignupContext } from "./signup-context";
 
@@ -13,6 +14,10 @@ export const MIN_PASSWORD_LENGTH = 12;
 
 export async function countUsers(db: Db): Promise<number> {
   return db.$count(schema.user);
+}
+
+export async function userExists(db: Db, email: string): Promise<boolean> {
+  return (await db.$count(schema.user, eq(schema.user.email, normalizeEmail(email)))) > 0;
 }
 
 export function createAuth(deps: {
@@ -25,6 +30,9 @@ export function createAuth(deps: {
     baseURL: config.appUrl,
     secret: config.betterAuthSecret,
     trustedOrigins: [config.appUrl],
+    // Sign-in/up go through the app's server actions (rate limits, sign-up policy); this only
+    // closes the public HTTP routes, direct auth.api calls are unaffected.
+    disabledPaths: ["/sign-in/email", "/sign-up/email"],
     database: drizzleAdapter(db, { provider: "pg", schema }),
     emailAndPassword: {
       enabled: true,
