@@ -135,6 +135,7 @@ describe("probeCapabilities", () => {
     });
     const r = await probeCapabilities(deps, target, { model: () => model([denied]) });
     expect(r.status).toBe("unsupported");
+    expect(r.authRejected).toBe(true);
     expect(r.checks.basic).toEqual({
       ok: false,
       error: "The provider rejected the API key (HTTP 401).",

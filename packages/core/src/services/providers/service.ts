@@ -264,7 +264,7 @@ export async function testProviderConfig(
       );
     }
   }
-  const { capabilities, status, checks } = await probeCapabilities(deps, {
+  const { capabilities, status, checks, authRejected } = await probeCapabilities(deps, {
     id: row.id,
     kind: row.kind as ProviderKind,
     baseUrl: row.baseUrl,
@@ -280,7 +280,7 @@ export async function testProviderConfig(
       .set({
         capabilities,
         status,
-        authFailed: false,
+        authFailed: authRejected,
         lastTestedAt: sql`now()`,
         updatedAt: sql`now()`,
       })

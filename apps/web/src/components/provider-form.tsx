@@ -48,9 +48,10 @@ export function ProviderForm({
   const [state, formAction, pending] = useActionState(action, undefined);
   const [kind, setKind] = useState<Kind>(initial?.kind ?? "anthropic");
   const [models, setModels] = useState({
-    main: initial?.models.main ?? suggestions[kind]?.main ?? "",
-    fast: initial?.models.fast ?? suggestions[kind]?.fast ?? "",
-    embedding: initial?.models.embedding ?? suggestions[kind]?.embedding ?? "",
+    // Suggestions prefill only a new config; an edit keeps exactly what was saved.
+    main: initial ? initial.models.main : (suggestions[kind]?.main ?? ""),
+    fast: initial ? initial.models.fast : (suggestions[kind]?.fast ?? ""),
+    embedding: initial ? (initial.models.embedding ?? "") : (suggestions[kind]?.embedding ?? ""),
   });
   const [embeddingRef, setEmbeddingRef] = useState(
     initial?.models.embeddingProviderConfigId ?? "self",
@@ -63,7 +64,8 @@ export function ProviderForm({
     const fill = suggestions[next];
     // Replace a model field only if it is empty or still the previous kind's suggestion.
     const swap = (role: "main" | "fast" | "embedding") =>
-      models[role] === "" || models[role] === (prev?.[role] ?? "")
+      (models[role] === "" && !(editing && role === "embedding")) ||
+      models[role] === (prev?.[role] ?? "")
         ? (fill?.[role] ?? "")
         : models[role];
     setModels({ main: swap("main"), fast: swap("fast"), embedding: swap("embedding") });

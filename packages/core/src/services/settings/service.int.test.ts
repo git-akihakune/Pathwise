@@ -34,6 +34,9 @@ describe("user settings", () => {
     ).toMatchObject({ bluntness: 5, timezone: "Europe/Berlin" });
     expect((await updateUserSettings(db, "u1", { timezone: null })).timezone).toBeNull();
   });
+  it("accepts UTC as an explicit timezone", async () => {
+    expect((await updateUserSettings(db, "u1", { timezone: "UTC" })).timezone).toBe("UTC");
+  });
   it.each([0, 6, 2.5])("rejects bluntness %s", async (bluntness) => {
     await expect(
       updateUserSettings(db, "u1", { bluntness: bluntness as 1 }),

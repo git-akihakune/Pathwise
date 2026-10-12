@@ -34,6 +34,15 @@ describe("encryptSecret / decryptSecret", () => {
       SecretDecryptError,
     );
   });
+  it("rejects a truncated authentication tag", () => {
+    const [v, id, iv, tag, ct] = encryptSecret(ring, "hello world", "a").split(":");
+    const short = Buffer.from(tag ?? "", "base64url")
+      .subarray(0, 4)
+      .toString("base64url");
+    expect(() => decryptSecret(ring, [v, id, iv, short, ct].join(":"), "a")).toThrow(
+      SecretDecryptError,
+    );
+  });
   it("decrypts with a non-current key chosen by key id", () => {
     const old = encryptSecret({ current: k2, others: [] }, "x", "a");
     expect(decryptSecret({ current: k1, others: [k2] }, old, "a")).toBe("x");

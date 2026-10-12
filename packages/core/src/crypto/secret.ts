@@ -42,9 +42,13 @@ export function decryptSecret(keyring: Keyring, payload: string, aad: string): s
     );
   }
   try {
-    const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64url"));
+    const authTag = Buffer.from(tag, "base64url");
+    if (authTag.length !== 16) throw new Error("bad tag length");
+    const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64url"), {
+      authTagLength: 16,
+    });
     decipher.setAAD(Buffer.from(aad, "utf8"));
-    decipher.setAuthTag(Buffer.from(tag, "base64url"));
+    decipher.setAuthTag(authTag);
     return Buffer.concat([
       decipher.update(Buffer.from(ct, "base64url")),
       decipher.final(),

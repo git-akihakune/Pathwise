@@ -20,7 +20,9 @@ export function CoachSettings({
     saveCoachSettingsAction,
     undefined,
   );
-  const zones = timezone && !timezones.includes(timezone) ? [timezone, ...timezones] : timezones;
+  // Node's supportedValuesOf omits "UTC", so offer it explicitly.
+  const all = timezones.includes("UTC") ? timezones : ["UTC", ...timezones];
+  const zones = timezone && !all.includes(timezone) ? [timezone, ...all] : all;
   return (
     <form action={action} className="flex flex-col gap-4">
       <fieldset className="flex flex-col gap-2">
@@ -49,7 +51,7 @@ export function CoachSettings({
           defaultValue={timezone ?? ""}
           className="h-9 w-72 rounded-md border border-input bg-transparent px-2 text-sm"
         >
-          <option value="">Not set (UTC)</option>
+          <option value="">Not set (browser zone)</option>
           {zones.map((z) => (
             <option key={z} value={z}>
               {z}

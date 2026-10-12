@@ -133,6 +133,23 @@ describe("generateStructured", () => {
     expect(JSON.stringify(model.doGenerateCalls[1]?.prompt.at(-1))).toContain("years");
     expect(await usageRows()).toHaveLength(2);
   });
+  it("accepts fenced JSON in native mode without a repair turn", async () => {
+    const model = scripted(reply('```json\n{"name":"Ada","years":3}\n```'));
+    expect(await generateStructured(deps, llmFor(model, true), opts)).toEqual({
+      name: "Ada",
+      years: 3,
+    });
+    expect(model.doGenerateCalls).toHaveLength(1);
+  });
+  it("omits the assistant turn from the repair when the first reply was empty", async () => {
+    const model = scripted(reply(""), reply('{"name":"Ada","years":3}'));
+    expect(await generateStructured(deps, llmFor(model, true), opts)).toEqual({
+      name: "Ada",
+      years: 3,
+    });
+    const roles = model.doGenerateCalls[1]?.prompt.map((m) => m.role);
+    expect(roles).not.toContain("assistant");
+  });
   it("gives up after exactly one repair, on both paths (Review Focus 4)", async () => {
     for (const jsonSchema of [false, true]) {
       const model = scripted(

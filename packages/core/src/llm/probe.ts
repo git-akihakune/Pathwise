@@ -23,6 +23,8 @@ export interface ProbeResult {
   capabilities: Capabilities;
   status: ProviderStatus;
   checks: ProbeChecks;
+  /** True when a check failed because the provider rejected the key (401/403). */
+  authRejected: boolean;
 }
 
 const TIMEOUT_MS = 60_000;
@@ -149,6 +151,7 @@ export async function probeCapabilities(
     }
   };
 
+  let authRejected = false;
   const run = async (
     fn: () => Promise<void>,
     prefix = "",
@@ -157,6 +160,7 @@ export async function probeCapabilities(
       await fn();
       return { ok: true };
     } catch (e) {
+      if (isAuthError(e)) authRejected = true;
       return { ok: false, error: `${prefix}${explain(e)}`.slice(0, 200) };
     }
   };
@@ -182,6 +186,7 @@ export async function probeCapabilities(
   const ok = (name: ProbeCheckName) => checks[name].ok;
   return {
     checks,
+    authRejected,
     status: statusFromChecks(checks),
     capabilities: {
       basic: ok("basic"),

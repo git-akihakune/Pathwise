@@ -1,3 +1,4 @@
+import { APICallError } from "ai";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { getTestDb, resetDb } from "../../../../../test/integration/db";
@@ -205,6 +206,26 @@ describe("testing, activation, deletion", () => {
       authFailed: false,
       status: "full",
     });
+  });
+  it("a re-test failing with an auth error keeps authFailed set", async () => {
+    const v = await savedAndActive();
+    registerMockFixture("probe", () => {
+      throw new APICallError({
+        message: "denied",
+        url: "https://x",
+        requestBodyValues: {},
+        statusCode: 401,
+        isRetryable: false,
+      });
+    });
+    try {
+      expect(await testProviderConfig(deps, user, v.id)).toMatchObject({
+        status: "unsupported",
+        authFailed: true,
+      });
+    } finally {
+      registerMockFixture("probe", probeFixture);
+    }
   });
   it("scopes every operation to the owner", async () => {
     const v = await saveProviderConfig(deps, user, { ...anthropic, scope: "user" });

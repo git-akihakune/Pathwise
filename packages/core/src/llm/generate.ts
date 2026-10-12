@@ -147,9 +147,7 @@ export async function generateStructured<T>(
           if (!NoOutputGeneratedError.isInstance(e) && !NoObjectGeneratedError.isInstance(e))
             throw e;
           const parsed = parseJsonReply(result.text, o.schema);
-          return parsed.ok
-            ? { ok: false, issues: [(e as Error).message], text: result.text }
-            : { ...parsed, text: result.text };
+          return parsed.ok ? parsed : { ...parsed, text: result.text };
         }
       }
       const parsed = parseJsonReply(result.text, o.schema);
@@ -165,11 +163,7 @@ export async function generateStructured<T>(
           text,
         );
         const parsed = parseJsonReply(text, o.schema);
-        return {
-          ok: false,
-          issues: parsed.ok ? [e.message] : parsed.issues,
-          text,
-        };
+        return parsed.ok ? parsed : { ...parsed, text };
       }
       throw e;
     }
@@ -184,7 +178,8 @@ export async function generateStructured<T>(
     );
     const second = await attempt([
       ...base,
-      { role: "assistant", content: first.text },
+      // Anthropic and Google reject empty assistant content.
+      ...(first.text.trim() ? [{ role: "assistant" as const, content: first.text }] : []),
       {
         role: "user",
         content: `Your previous reply did not match the required JSON.\nProblems:\n${first.issues.map((i) => `- ${i}`).join("\n")}\nReply with only the corrected JSON object.`,

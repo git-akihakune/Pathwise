@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
-import { readFileSync, renameSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { closeSync, fsyncSync, openSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { eq, isNotNull } from "drizzle-orm";
 import { type AppConfig, decodeEncryptionKey } from "../config";
 import { type Db, schema } from "../db";
@@ -8,10 +8,22 @@ import { ConfigError } from "../errors";
 import { loadKeyring } from "./keyring";
 import { decryptSecret, encryptSecret, SecretDecryptError } from "./secret";
 
+function fsyncPath(path: string): void {
+  const fd = openSync(path, "r");
+  try {
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/** Durable write: fsync the temp file before the rename and the directory after it. */
 function writeKeyFile(path: string, key: Buffer): void {
   const tmp = `${path}.tmp`;
   writeFileSync(tmp, key.toString("base64"), { mode: 0o600 });
+  fsyncPath(tmp);
   renameSync(tmp, path);
+  fsyncPath(dirname(path));
 }
 
 function readNextKey(path: string): Buffer | null {
@@ -103,5 +115,6 @@ export async function rotateEncryptionKey(
 
   writeKeyFile(previousPath, config.appEncryptionKey);
   renameSync(nextPath, keyPath);
+  fsyncPath(config.secretsDir);
   return { rotated };
 }
