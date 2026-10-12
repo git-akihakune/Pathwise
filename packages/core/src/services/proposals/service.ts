@@ -186,6 +186,7 @@ async function lockPending(db: DbOrTx, userId: string, id: string): Promise<Row>
 
 async function resolve(
   db: DbOrTx,
+  userId: string,
   id: string,
   status: ProposalStatus,
   extra: { payload?: unknown; resolved: boolean },
@@ -198,7 +199,7 @@ async function resolve(
       ...(extra.resolved ? { resolvedAt: new Date() } : {}),
       updatedAt: new Date(),
     })
-    .where(eq(schema.proposals.id, id));
+    .where(and(eq(schema.proposals.id, id), eq(schema.proposals.userId, userId)));
 }
 
 const CHANGED_TARGET = "An edit can't change what the proposal targets.";
@@ -311,20 +312,18 @@ async function applyPlanChange(
   change: ProposalPayloads["plan_change"],
 ): Promise<void> {
   const planId = proposal.targetId as string;
-  // A stale or archived plan fails here; the services below lock it for the rest of the transaction.
+  // Lock the plan row before comparing, so a manual edit can't commit between the check and the writes.
+  const p = schema.plans;
+  const [plan] = await tx
+    .select({ version: p.version, status: p.status })
+    .from(p)
+    .where(and(eq(p.id, planId), eq(p.userId, userId)))
+    .for("update");
+  if (plan?.status !== "active" || plan.version !== proposal.targetVersion) {
+    throw new ConflictError("Your plan changed after this was proposed.");
+  }
   if (change.northStar !== undefined) {
-    await updatePlan(
-      tx,
-      userId,
-      planId,
-      { northStar: change.northStar },
-      proposal.targetVersion ?? undefined,
-    );
-  } else {
-    const active = await getActivePlan(tx, userId);
-    if (active?.id !== planId || active.version !== proposal.targetVersion) {
-      throw new ConflictError("Your plan changed after this was proposed.");
-    }
+    await updatePlan(tx, userId, planId, { northStar: change.northStar });
   }
   for (const m of change.milestones.add) await addMilestone(tx, userId, planId, m);
   for (const { id, ...patch } of change.milestones.update)
@@ -353,10 +352,10 @@ export async function approveProposal(
       await tx.transaction((savepoint) => apply(savepoint, userId, proposal, payload));
     } catch (e) {
       if (!(e instanceof ConflictError || e instanceof NotFoundError)) throw e;
-      await resolve(tx, id, "conflicted", { resolved: false });
+      await resolve(tx, userId, id, "conflicted", { resolved: false });
       return { status: "conflicted" as const };
     }
-    await resolve(tx, id, "approved", { payload, resolved: true });
+    await resolve(tx, userId, id, "approved", { payload, resolved: true });
     return { status: "approved" as const };
   });
 }
@@ -364,6 +363,6 @@ export async function approveProposal(
 export async function rejectProposal(db: DbOrTx, userId: string, id: string): Promise<void> {
   await db.transaction(async (tx) => {
     await lockPending(tx, userId, id);
-    await resolve(tx, id, "rejected", { resolved: true });
+    await resolve(tx, userId, id, "rejected", { resolved: true });
   });
 }

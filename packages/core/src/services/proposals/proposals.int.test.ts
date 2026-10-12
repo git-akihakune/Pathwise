@@ -299,3 +299,36 @@ describe("targeted kinds beyond profile", () => {
     expect((await getActivePlan(db, "u1"))?.northStar).toBe("N");
   });
 });
+
+describe("plan_change locks the plan before comparing", () => {
+  it("waits for an in-flight manual edit, then conflicts (no northStar)", async () => {
+    const plan = await createPlan(db, "u1", { northStar: "N", milestones: [], actions: [] });
+    const pc = await createProposal(db, "u1", {
+      kind: "plan_change",
+      payload: {
+        milestones: { add: [{ title: "Coach" }], update: [], remove: [] },
+        actions: { add: [], update: [], remove: [] },
+      },
+    });
+    let release = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    let inside = () => {};
+    const entered = new Promise<void>((r) => {
+      inside = r;
+    });
+    const manual = db.transaction(async (tx) => {
+      await addMilestone(tx, "u1", plan.id, { title: "Manual" });
+      inside();
+      await gate;
+    });
+    await entered;
+    const approving = approveProposal(db, "u1", pc.id);
+    await new Promise((r) => setTimeout(r, 200));
+    release();
+    await manual;
+    expect(await approving).toEqual({ status: "conflicted" });
+    expect((await getActivePlan(db, "u1"))?.milestones.map((m) => m.title)).toEqual(["Manual"]);
+  });
+});
