@@ -23,6 +23,12 @@ describe("loadBaseConfig", () => {
       otelEndpoint: null,
     });
   });
+  it("rejects an APP_URL that is not an http(s) URL", () => {
+    for (const bad of ["coach.example.com", "ftp://x.io"]) {
+      expect(() => loadBaseConfig({ ...DB, APP_URL: bad })).toThrow(ConfigError);
+      expect(() => loadBaseConfig({ ...DB, APP_URL: bad })).toThrow(/APP_URL/);
+    }
+  });
   it("strips a trailing slash from APP_URL", () => {
     expect(loadBaseConfig({ ...DB, APP_URL: "https://coach.example.com/" }).appUrl).toBe(
       "https://coach.example.com",

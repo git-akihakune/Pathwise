@@ -42,7 +42,11 @@ const optional = <T extends z.ZodType>(schema: T) =>
 const bool = optional(z.enum(["true", "false"]).transform((v) => v === "true"));
 
 const envSchema = z.object({
-  APP_URL: optional(z.string()),
+  APP_URL: optional(
+    z.string().refine((v) => URL.canParse(v) && /^https?:$/.test(new URL(v).protocol), {
+      message: "must be an http(s) URL such as http://localhost:3000",
+    }),
+  ),
   DATABASE_URL: z.preprocess((v) => (v === "" ? undefined : v), z.string()),
   SECRETS_DIR: optional(z.string()),
   FILES_DIR: optional(z.string()),
