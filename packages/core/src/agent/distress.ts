@@ -12,6 +12,10 @@ const ACUTE = [
   "(?:don'?t|do not) want to live",
   "(?:don'?t|do not) want to be alive",
   "better off dead",
+  "(?:want to|wanna) die",
+  "(?:commit|thinking about|thoughts of) suicide",
+  "self[- ]?harm(?:ing)?",
+  "kill me",
   "(?:can'?t|cannot|can not) go on",
 ];
 const ELEVATED = [
@@ -45,12 +49,14 @@ export function maxDistress(a: Distress, b: Distress): Distress {
   return RANK[a] >= RANK[b] ? a : b;
 }
 
+const escapeLinkText = (t: string) => t.replace(/[\\[\]]/g, "\\$&");
+
 export const SAFETY_RESPONSE = (resources: SafetyResource[]): string =>
   `I'm really sorry you're going through this. I'm an AI career coach, so I can't help with this the way a person can, and your safety matters more than anything we were working on.
 
 If you might act on thoughts of harming yourself, or you're in immediate danger, please contact your local emergency number now.
 
 You can reach someone to talk to here:
-${resources.map((r) => `- [${r.name}](${r.url})`).join("\n")}
+${resources.map((r) => `- [${escapeLinkText(r.name)}](<${r.url}>)`).join("\n")}
 
 If you can, tell someone you trust how you're feeling. I'm here to talk about your career whenever you want to come back to it.`;

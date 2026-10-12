@@ -48,3 +48,14 @@ it("falls back to the default list when the column is missing or malformed", asy
     );
   }
 });
+it("accepts upper-case schemes and still rejects non-http schemes", async () => {
+  const list = [{ name: "Upper", url: "HTTPS://example.org/help" }];
+  await setSafetyResources(db, "adm", list);
+  expect((await getSafetyResources(db))[0]?.name).toBe("Upper");
+  await expect(
+    setSafetyResources(db, "adm", [{ name: "X", url: "JavaScript:alert(1)" }]),
+  ).rejects.toThrow("Each resource needs a name and an http(s) URL.");
+  await expect(
+    setSafetyResources(db, "adm", [{ name: "X", url: "ftp://example.org" }]),
+  ).rejects.toThrow("Each resource needs a name and an http(s) URL.");
+});

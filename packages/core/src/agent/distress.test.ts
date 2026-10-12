@@ -9,6 +9,13 @@ it.each([
   ["I do not want to live anymore", "acute"],
   ["I dont want to be alive", "acute"],
   ["I cannot go on", "acute"],
+  ["I want to die", "acute"],
+  ["I just wanna die", "acute"],
+  ["I'm thinking about suicide", "acute"],
+  ["I want to commit suicide", "acute"],
+  ["I've been self-harming", "acute"],
+  ["I self harm sometimes", "acute"],
+  ["Sometimes I wish someone would kill me", "acute"],
   ["I'm completely burnt out", "elevated"],
   ["I feel hopeless about job hunting", "elevated"],
   ["This commute kills my motivation", "none"],
@@ -25,7 +32,11 @@ it("lists the instance's resources in the safety response", () => {
     { name: "Find a Helpline", url: "https://findahelpline.com" },
   ]);
   expect(text).toContain(
-    "- [Samaritans](https://www.samaritans.org)\n- [Find a Helpline](https://findahelpline.com)",
+    "- [Samaritans](<https://www.samaritans.org>)\n- [Find a Helpline](<https://findahelpline.com>)",
   );
   expect(text).toContain("contact your local emergency number now");
+});
+it("cannot be used to inject markdown links via resource names or URLs", () => {
+  const text = SAFETY_RESPONSE([{ name: "a](javascript:alert(1)) [b", url: "https://x.org/a)b" }]);
+  expect(text).toContain("- [a\\](javascript:alert(1)) \\[b](<https://x.org/a)b>)");
 });

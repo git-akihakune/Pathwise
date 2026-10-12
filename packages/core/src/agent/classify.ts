@@ -12,7 +12,7 @@ import { WORKFLOW_ONLY } from "./select";
 const log = createLogger("agent");
 
 const classifySchema = z.object({
-  skills: z.array(z.string()).max(4),
+  skills: z.array(z.string()),
   distress: z.enum(["none", "elevated", "acute"]),
 });
 
@@ -26,14 +26,14 @@ export async function classify(
   llm: Llm,
   input: { text: string; history: UIMessage[] },
 ): Promise<{ skills: SkillId[]; distress: Distress }> {
-  const available = listSkills().filter((s) => s.id !== "core" && !WORKFLOW_ONLY.includes(s.id));
-  const instructions = [
-    "Classify the user's latest message for a career coach. skills: the extra skills the coach needs for the reply (zero or more), from this list:",
-    ...available.map((s) => `- ${s.id}: ${s.description}`),
-    'distress: "acute" if the user mentions suicide, self-harm, or being in immediate danger; "elevated" for strong distress such as hopelessness, panic, or burnout; otherwise "none".',
-  ].join("\n");
-  const prompt = `${wrapData("conversation", input.history.slice(-4).map(line).join("\n"))}\n${wrapData("latest", input.text)}`;
   try {
+    const available = listSkills().filter((s) => s.id !== "core" && !WORKFLOW_ONLY.includes(s.id));
+    const instructions = [
+      "Classify the user's latest message for a career coach. skills: the extra skills the coach needs for the reply (zero or more), from this list:",
+      ...available.map((s) => `- ${s.id}: ${s.description}`),
+      'distress: "acute" if the user mentions suicide, self-harm, or being in immediate danger; "elevated" for strong distress such as hopelessness, panic, or burnout; otherwise "none".',
+    ].join("\n");
+    const prompt = `${wrapData("conversation", input.history.slice(-4).map(line).join("\n"))}\n${wrapData("latest", input.text)}`;
     const out = await generateStructured(deps, llm, {
       role: "fast",
       purpose: "classify",
@@ -43,7 +43,7 @@ export async function classify(
     });
     const known = new Set<string>(available.map((s) => s.id));
     return {
-      skills: out.skills.filter((s): s is SkillId => known.has(s)),
+      skills: out.skills.filter((s): s is SkillId => known.has(s)).slice(0, 4),
       distress: maxDistress(out.distress, keywordDistress(input.text)),
     };
   } catch (e) {

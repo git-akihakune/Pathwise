@@ -79,3 +79,35 @@ it("rethrows auth errors", async () => {
     APICallError,
   );
 });
+it("keeps the distress verdict when the model returns more than 4 skills, and caps skills at 4", async () => {
+  for (const id of ["core", "intake", "checkin"] as const)
+    registerSkill({ id, description: id, promptFragment: () => "", tools: () => ({}) });
+  const fast = new MockLanguageModelV4({
+    doGenerate: jsonReply({
+      skills: ["direction", "planning", "a", "b", "c"],
+      distress: "acute",
+    }),
+  });
+  const out = await classify(deps, llmWith(fast), { text: "hello there", history: [] });
+  expect(out.distress).toBe("acute");
+  expect(out.skills.length).toBeLessThanOrEqual(4);
+  expect(out.skills).toEqual(["direction", "planning"]);
+});
+it("falls back to keyword distress when prompt assembly throws", async () => {
+  const fast = new MockLanguageModelV4({ doGenerate: jsonReply({ skills: [], distress: "none" }) });
+  const history = [
+    {
+      id: "m",
+      role: "user",
+      get parts(): never {
+        throw new Error("bad");
+      },
+    },
+  ];
+  expect(
+    await classify(deps, llmWith(fast), {
+      text: "I want to end my life",
+      history: history as never,
+    }),
+  ).toEqual({ skills: [], distress: "acute" });
+});
