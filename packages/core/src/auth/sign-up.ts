@@ -42,7 +42,8 @@ function mapError(e: unknown): SignUpFailure | null {
   ) {
     return "email_taken";
   }
-  if (body?.code === "PASSWORD_TOO_SHORT") return "weak_password";
+  if (body?.code === "PASSWORD_TOO_SHORT" || body?.code === "PASSWORD_TOO_LONG")
+    return "weak_password";
   return null;
 }
 
