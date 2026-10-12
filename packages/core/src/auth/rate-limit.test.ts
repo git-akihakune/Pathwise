@@ -10,3 +10,12 @@ it("blocks after the limit within a window, isolates keys, and resets afterwards
   expect(limiter.allow("a", 999)).toBe(false);
   expect(limiter.allow("a", 1000)).toBe(true);
 });
+
+it("evicts expired keys on the next sweep", () => {
+  const limiter = createRateLimiter({ limit: 1, windowMs: 1000 });
+  limiter.allow("a", 0);
+  limiter.allow("b", 10);
+  expect(limiter.size()).toBe(2);
+  limiter.allow("c", 1500);
+  expect(limiter.size()).toBe(1);
+});
