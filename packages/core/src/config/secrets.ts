@@ -6,8 +6,16 @@ import { ConfigError } from "../errors";
 import { decodeEncryptionKey, SECRET_NAMES, type SecretName } from "./env";
 
 function assertValid(name: SecretName, path: string): void {
+  let value: string;
   try {
-    const value = readFileSync(path, "utf8").trim();
+    value = readFileSync(path, "utf8").trim();
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code ?? "unknown error";
+    throw new ConfigError(
+      `Secret file ${path} could not be read (${code}). Check its permissions and that it is a regular file; it was not modified.`,
+    );
+  }
+  try {
     if (!value) throw new ConfigError("empty");
     if (name === "APP_ENCRYPTION_KEY") decodeEncryptionKey(value);
   } catch {
