@@ -116,3 +116,27 @@ export const memoryItems = pgTable(
     check("memory_items_status", sql`${t.status} in ('active','pending','rejected','superseded')`),
   ],
 );
+
+export const stories = pgTable(
+  "stories",
+  {
+    ...common(),
+    title: text("title").notNull(),
+    situation: text("situation").notNull().default(""),
+    task: text("task").notNull().default(""),
+    action: text("action").notNull().default(""),
+    result: text("result").notNull().default(""),
+    metrics: text("metrics"),
+    skills: text("skills").array().notNull().default(sql`'{}'::text[]`),
+    embedding: anyVector("embedding"),
+    embeddingModel: text("embedding_model"),
+    search: tsvector("search").generatedAlwaysAs(
+      sql`setweight(to_tsvector('english', "title" || ' ' || immutable_array_to_string("skills", ' ')), 'A') || setweight(to_tsvector('english', "situation" || ' ' || "task" || ' ' || "action" || ' ' || "result" || ' ' || coalesce("metrics", '')), 'B')`,
+    ),
+  },
+  (t) => [
+    index("stories_user_id_idx").on(t.userId),
+    index("stories_search_idx").using("gin", t.search),
+    sourceCheck("stories_source_type", t.sourceType),
+  ],
+);

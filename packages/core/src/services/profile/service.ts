@@ -43,7 +43,7 @@ export interface Profile {
   skills: Skill[];
 }
 
-const SOURCES = ["cv", "linkedin", "message", "checkin", "manual"] as const;
+export const SOURCES = ["cv", "linkedin", "message", "checkin", "manual"] as const;
 const text = (max: number) => z.string().trim().max(max).nullish();
 const required = (message: string) => z.string().trim().min(1, message).max(200);
 const partialDate = z

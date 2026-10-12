@@ -50,6 +50,13 @@
       "when": 1791841202097,
       "tag": "0006_square_starhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791841382197,
+      "tag": "0007_third_forgotten_one",
+      "breakpoints": true
     }
   ]
 }
