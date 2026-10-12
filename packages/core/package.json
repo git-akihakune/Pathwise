@@ -5,12 +5,7 @@
   "type": "module",
   "license": "AGPL-3.0-only",
   "exports": {
-    "./auth": "./src/auth/index.ts",
-    "./config": "./src/config/index.ts",
-    "./db": "./src/db/index.ts",
-    "./errors": "./src/errors/index.ts",
-    "./health": "./src/health/index.ts",
-    "./instance": "./src/instance/index.ts"
+    "./*": "./src/*/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
