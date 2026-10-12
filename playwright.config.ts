@@ -5,5 +5,14 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   use: { baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3100" },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // Playwright orders files alphabetically; admin.spec.ts needs the admin that auth.spec.ts creates.
+  projects: [
+    { name: "auth", testMatch: "auth.spec.ts", use: { ...devices["Desktop Chrome"] } },
+    {
+      name: "admin",
+      testMatch: "admin.spec.ts",
+      dependencies: ["auth"],
+      use: { ...devices["Desktop Chrome"] },
+    },
+  ],
 });

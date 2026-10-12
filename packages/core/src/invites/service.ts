@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import { type Db, schema } from "../db";
+import { NotFoundError } from "../errors";
 
 export interface Invite {
   id: string;
@@ -82,4 +83,65 @@ export async function markInviteUsed(
     .update(schema.invites)
     .set({ usedAt: now, usedBy: userId })
     .where(eq(schema.invites.id, inviteId));
+}
+
+export type InviteStatus = "usable" | "used" | "expired" | "revoked";
+
+// Precedence when several apply: revoked > used > expired > usable.
+function inviteStatus(invite: Invite, now: Date): InviteStatus {
+  if (invite.revokedAt) return "revoked";
+  if (invite.usedAt) return "used";
+  if (invite.expiresAt <= now) return "expired";
+  return "usable";
+}
+
+export async function describeInvite(
+  db: Db,
+  token: string,
+  now: Date = new Date(),
+): Promise<{ status: InviteStatus; email: string } | { status: "unknown" }> {
+  const [row] = await db
+    .select()
+    .from(schema.invites)
+    .where(eq(schema.invites.tokenHash, hashInviteToken(token)));
+  if (!row) return { status: "unknown" };
+  return { status: inviteStatus(toInvite(row), now), email: row.email };
+}
+
+/** Newest first. */
+export async function listInvites(
+  db: Db,
+  now: Date = new Date(),
+): Promise<(Invite & { status: InviteStatus })[]> {
+  const rows = await db.select().from(schema.invites).orderBy(desc(schema.invites.createdAt));
+  return rows.map((row) => {
+    const invite = toInvite(row);
+    return { ...invite, status: inviteStatus(invite, now) };
+  });
+}
+
+/** Revokes an unused invite. Already-revoked is a no-op; unknown or used invites throw NotFoundError. */
+export async function revokeInvite(
+  db: Db,
+  inviteId: string,
+  now: Date = new Date(),
+): Promise<void> {
+  const revoked = await db
+    .update(schema.invites)
+    .set({ revokedAt: now })
+    .where(
+      and(
+        eq(schema.invites.id, inviteId),
+        isNull(schema.invites.usedAt),
+        isNull(schema.invites.revokedAt),
+      ),
+    )
+    .returning({ id: schema.invites.id });
+  if (revoked.length > 0) return;
+  const [existing] = await db
+    .select({ revokedAt: schema.invites.revokedAt, usedAt: schema.invites.usedAt })
+    .from(schema.invites)
+    .where(eq(schema.invites.id, inviteId));
+  if (existing?.revokedAt && !existing.usedAt) return;
+  throw new NotFoundError("invite not found or already used");
 }
