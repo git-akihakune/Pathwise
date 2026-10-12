@@ -119,6 +119,12 @@ export async function importTaxonomySnapshot(
       tx.insert(schema.occupationRelations).values(b),
     );
 
+    // System change: deliberately no version bump, so pending proposals don't go stale.
+    await tx.execute(sql`
+      update skills set taxonomy_skill_id = null
+      where taxonomy_skill_id is not null
+        and taxonomy_skill_id not in (select id from taxonomy_skills)`);
+
     await tx
       .insert(schema.taxonomyMeta)
       .values({ id: 1, version, importedAt: sql`now()` })

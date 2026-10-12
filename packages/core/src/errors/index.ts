@@ -25,3 +25,8 @@ export class LlmUnavailableError extends Error {
     this.reason = reason;
   }
 }
+
+/** The row changed since the caller loaded it (optimistic-version mismatch). */
+export class ConflictError extends Error {
+  override name = "ConflictError";
+}

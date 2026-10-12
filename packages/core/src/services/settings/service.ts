@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { type Db, schema } from "../../db";
+import { type DbOrTx, schema } from "../../db";
 import { ValidationError } from "../../errors";
 
 export interface UserSettings {
@@ -39,7 +39,7 @@ function toSettings(row: typeof schema.userSettings.$inferSelect): UserSettings 
   };
 }
 
-export async function getUserSettings(db: Db, userId: string): Promise<UserSettings> {
+export async function getUserSettings(db: DbOrTx, userId: string): Promise<UserSettings> {
   await db.insert(schema.userSettings).values({ userId }).onConflictDoNothing();
   const [row] = await db
     .select()
@@ -50,7 +50,7 @@ export async function getUserSettings(db: Db, userId: string): Promise<UserSetti
 }
 
 export async function updateUserSettings(
-  db: Db,
+  db: DbOrTx,
   userId: string,
   patch: Partial<Pick<UserSettings, "bluntness" | "timezone">>,
 ): Promise<UserSettings> {
