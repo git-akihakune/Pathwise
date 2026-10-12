@@ -15,21 +15,29 @@ const version = (fd: FormData) => {
   return v === null ? undefined : Number(v);
 };
 
+/** Runs a form action for the signed-in user; a gone target or any failure becomes a form error. */
+export async function runForm(
+  path: string,
+  run: (userId: string) => Promise<unknown>,
+): Promise<FormState> {
+  const { userId } = await requireSession();
+  try {
+    await run(userId);
+  } catch (e) {
+    return e instanceof NotFoundError ? { error: GONE_MESSAGE } : toFormError(e);
+  }
+  revalidatePath(path);
+}
+
 /** Runs a save: creates, or updates when the form carries a hidden id. */
-export async function saveEntity(
+export function saveEntity(
   path: string,
   fd: FormData,
   create: (userId: string) => Promise<unknown>,
   update: (userId: string, id: string, expectedVersion?: number) => Promise<unknown>,
 ): Promise<FormState> {
-  const { userId } = await requireSession();
   const id = field(fd, "id");
-  try {
-    await (id ? update(userId, id, version(fd)) : create(userId));
-  } catch (e) {
-    return e instanceof NotFoundError ? { error: GONE_MESSAGE } : toFormError(e);
-  }
-  revalidatePath(path);
+  return runForm(path, (userId) => (id ? update(userId, id, version(fd)) : create(userId)));
 }
 
 /** Deleting something already gone is a success. */
