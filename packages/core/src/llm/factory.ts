@@ -4,6 +4,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { EmbeddingModel, LanguageModel } from "ai";
 import type { AppConfig } from "../config";
+import { createMockEmbeddingModel, createMockModel } from "./mock";
 import type { Capabilities, LlmPurpose, ProviderKind, ProviderModels } from "./types";
 
 // Explicit string keys and base URLs stop the SDKs from reading *_API_KEY / *_BASE_URL from the
@@ -25,12 +26,13 @@ export interface ProviderTarget {
 }
 
 export function createLanguageModel(
-  _config: Pick<AppConfig, "llmMode">,
+  config: Pick<AppConfig, "llmMode">,
   target: ProviderTarget,
   role: "main" | "fast",
-  _purpose: LlmPurpose,
+  purpose: LlmPurpose,
   opts?: { structuredOutputs?: boolean },
 ): LanguageModel {
+  if (config.llmMode === "mock") return createMockModel(role, purpose);
   const id = target.models[role];
   const apiKey = target.apiKey ?? undefined;
   switch (target.kind) {
@@ -52,11 +54,12 @@ export function createLanguageModel(
 }
 
 export function createEmbeddingModel(
-  _config: Pick<AppConfig, "llmMode">,
+  config: Pick<AppConfig, "llmMode">,
   target: ProviderTarget,
 ): EmbeddingModel | null {
   const id = target.models.embedding;
   if (!id) return null;
+  if (config.llmMode === "mock") return createMockEmbeddingModel(id);
   const apiKey = target.apiKey ?? undefined;
   switch (target.kind) {
     case "anthropic":
