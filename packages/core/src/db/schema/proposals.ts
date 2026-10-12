@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { check, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth";
+import { messages, sessions } from "./conversation";
 
 export const PROPOSAL_KINDS = [
   "profile_update",
@@ -26,9 +27,8 @@ export const proposals = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    // No foreign keys: the sessions and messages tables arrive with the coach.
-    sessionId: uuid("session_id"),
-    messageId: uuid("message_id"),
+    sessionId: uuid("session_id").references(() => sessions.id, { onDelete: "set null" }),
+    messageId: uuid("message_id").references(() => messages.id, { onDelete: "set null" }),
     kind: text("kind").notNull(),
     payload: jsonb("payload").notNull(),
     targetId: uuid("target_id"),

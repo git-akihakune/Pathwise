@@ -71,6 +71,13 @@
       "when": 1791841818970,
       "tag": "0009_jittery_sunfire",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791844348418,
+      "tag": "0010_swift_miss_america",
+      "breakpoints": true
     }
   ]
 }

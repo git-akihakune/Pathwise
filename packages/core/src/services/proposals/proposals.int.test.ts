@@ -8,6 +8,7 @@ import { addMemory, listMemory } from "../memory";
 import { listPaths } from "../paths";
 import { addMilestone, createPlan, getActivePlan, setActionStatus } from "../plan";
 import { createExperience, deleteExperience, getProfile, updateExperience } from "../profile";
+import { appendMessage, getOrStartSession } from "../sessions";
 import { createStory, listStories } from "../stories";
 import { approveProposal, createProposal, getProposal, listProposals, rejectProposal } from ".";
 
@@ -52,9 +53,15 @@ describe("approving applies each kind", () => {
     expect((await getProfile(db, "u1")).experiences).toEqual([]);
   });
   it("memory_add is always active, even when sensitive", async () => {
+    const session = await getOrStartSession(db, "u1");
+    const message = await appendMessage(db, "u1", session.id, {
+      role: "assistant",
+      parts: [{ type: "text", text: "Noted." }],
+    });
     const p = await createProposal(db, "u1", {
       kind: "memory_add",
-      messageId: "5b8e2f4a-9c1d-4e7b-8a3f-2d6c0b1e9f47",
+      sessionId: session.id,
+      messageId: message.id,
       payload: { category: "constraint", content: "Needs visa sponsorship", sensitive: true },
     });
     await approveProposal(db, "u1", p.id);
@@ -62,7 +69,7 @@ describe("approving applies each kind", () => {
       status: "active",
       sensitive: true,
       sourceType: "message",
-      sourceId: "5b8e2f4a-9c1d-4e7b-8a3f-2d6c0b1e9f47",
+      sourceId: message.id,
       confidence: 1,
     });
     expect(await getProposal(db, "u1", p.id)).toMatchObject({
@@ -235,10 +242,11 @@ describe("staleness and safety", () => {
     await expect(rejectProposal(db, "u1", p.id)).rejects.toBeInstanceOf(ConflictError);
   });
   it("rejects, lists, and keeps proposals private", async () => {
+    const session = await getOrStartSession(db, "u1");
     const p = await createProposal(db, "u1", {
       kind: "story_add",
       payload: STORY,
-      sessionId: "0c4d7a1e-6b2f-4c8a-9e3d-5f1a2b7c8d90",
+      sessionId: session.id,
     });
     await expect(getProposal(db, "u2", p.id)).rejects.toBeInstanceOf(NotFoundError);
     await expect(approveProposal(db, "u2", p.id)).rejects.toBeInstanceOf(NotFoundError);
@@ -249,11 +257,9 @@ describe("staleness and safety", () => {
         payload: { entity: "experience", op: "delete", id: theirs.id },
       }),
     ).rejects.toBeInstanceOf(NotFoundError);
-    expect(
-      (await listProposals(db, "u1", { sessionId: "0c4d7a1e-6b2f-4c8a-9e3d-5f1a2b7c8d90" })).map(
-        (x) => x.id,
-      ),
-    ).toEqual([p.id]);
+    expect((await listProposals(db, "u1", { sessionId: session.id })).map((x) => x.id)).toEqual([
+      p.id,
+    ]);
     await rejectProposal(db, "u1", p.id);
     expect(await listProposals(db, "u1", { status: ["pending"] })).toEqual([]);
     expect(await listStories(db, "u1")).toEqual([]);
