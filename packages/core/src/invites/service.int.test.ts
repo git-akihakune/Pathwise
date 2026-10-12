@@ -41,7 +41,20 @@ describe("invites", () => {
   });
   it("rejects used invites", async () => {
     const { invite, token } = await createInvite(db, { email: "b@x.io", createdBy: adminId });
-    await markInviteUsed(db, invite.id, adminId);
+    const now = new Date("2026-01-02T00:00:00Z");
+    await markInviteUsed(db, invite.id, adminId, now);
+    expect(await findUsableInvite(db, token, "b@x.io")).toBeNull();
+    const [row] = await db.select().from(schema.invites).where(eq(schema.invites.id, invite.id));
+    expect(row?.usedBy).toBe(adminId);
+    expect(row?.usedAt).toEqual(now);
+  });
+  it("rejects revoked invites", async () => {
+    const { invite, token } = await createInvite(db, { email: "b@x.io", createdBy: adminId });
+    expect(await findUsableInvite(db, token, "b@x.io")).not.toBeNull();
+    await db
+      .update(schema.invites)
+      .set({ revokedAt: new Date() })
+      .where(eq(schema.invites.id, invite.id));
     expect(await findUsableInvite(db, token, "b@x.io")).toBeNull();
   });
 });
