@@ -1,17 +1,16 @@
 "use server";
 
-import { ValidationError } from "@pathwise/core/errors";
-import type { ProbeChecks, ProviderKind, ProviderStatus } from "@pathwise/core/llm";
+import type { ProbeChecks, ProviderStatus } from "@pathwise/core/llm";
 import {
   activateProviderConfig,
   deleteProviderConfig,
-  type ProviderConfigInput,
   saveProviderConfig,
   testProviderConfig,
 } from "@pathwise/core/services/providers";
 import { updateUserSettings } from "@pathwise/core/services/settings";
 import { revalidatePath } from "next/cache";
 import { toFormError } from "@/lib/form-error";
+import { optional, parseProviderInput, text } from "@/lib/provider-input";
 import { getServer } from "@/lib/server";
 import { requireSession } from "@/lib/session";
 
@@ -24,38 +23,6 @@ export type ProviderFormState =
 
 export type CoachSettingsState = { error?: string; saved?: boolean } | undefined;
 
-const KINDS: readonly string[] = [
-  "anthropic",
-  "openai",
-  "google",
-  "openai_compatible",
-] satisfies ProviderKind[];
-
-const text = (fd: FormData, name: string) => String(fd.get(name) ?? "").trim();
-const optional = (fd: FormData, name: string) => text(fd, name) || undefined;
-
-function parseInput(fd: FormData): ProviderConfigInput & { id?: string } {
-  const kind = text(fd, "kind");
-  if (!KINDS.includes(kind)) throw new ValidationError("Choose a provider.");
-  const embeddingRef = text(fd, "embeddingProviderConfigId");
-  const contextWindow = optional(fd, "contextWindow");
-  return {
-    id: optional(fd, "id"),
-    kind: kind as ProviderKind,
-    label: text(fd, "label"),
-    baseUrl: optional(fd, "baseUrl"),
-    // An empty field means "keep the stored key".
-    apiKey: optional(fd, "apiKey"),
-    models: {
-      main: text(fd, "mainModel"),
-      fast: text(fd, "fastModel"),
-      embedding: optional(fd, "embeddingModel"),
-      embeddingProviderConfigId: embeddingRef && embeddingRef !== "self" ? embeddingRef : undefined,
-    },
-    contextWindow: contextWindow === undefined ? undefined : Number(contextWindow),
-  };
-}
-
 export async function saveProviderAction(
   _prev: ProviderFormState,
   fd: FormData,
@@ -65,7 +32,10 @@ export async function saveProviderAction(
   const actor = { userId, role };
   let configId = optional(fd, "id");
   try {
-    const saved = await saveProviderConfig(deps, actor, { ...parseInput(fd), scope: "user" });
+    const saved = await saveProviderConfig(deps, actor, {
+      ...parseProviderInput(fd),
+      scope: "user",
+    });
     configId = saved.id;
     const { checks, status, label } = await testProviderConfig(deps, actor, saved.id);
     return { result: { label, status, checks } };

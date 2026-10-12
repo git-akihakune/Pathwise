@@ -1,5 +1,8 @@
 import { listInvites, listUsers } from "@pathwise/core/admin";
 import { getInstanceSettings } from "@pathwise/core/instance";
+import { MODEL_SUGGESTIONS } from "@pathwise/core/llm";
+import { getInstanceProviderConfig } from "@pathwise/core/services/providers";
+import { usageByUser } from "@pathwise/core/services/usage";
 import { connection } from "next/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,24 +18,84 @@ import {
 import { getServer } from "@/lib/server";
 import { requireAdmin } from "@/lib/session";
 import { revokeInviteAction } from "./actions";
+import { InstanceProvider } from "./instance-provider";
 import { InviteForm } from "./invite-form";
 import { SignupModeSelect } from "./signup-mode-select";
 
+const DAY_MS = 86_400_000;
 const date = (d: Date) => d.toISOString().slice(0, 10);
 
 export default async function AdminPage() {
   await connection();
   const { userId } = await requireAdmin();
-  const { db } = getServer();
-  const [users, invites, settings] = await Promise.all([
+  const { db, config } = getServer();
+  const [users, invites, settings, instanceProvider, usage] = await Promise.all([
     listUsers(db, userId),
     listInvites(db, userId),
     getInstanceSettings(db),
+    getInstanceProviderConfig(db, userId),
+    usageByUser(db, userId, new Date(Date.now() - 30 * DAY_MS)),
   ]);
 
   return (
     <section className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Admin</h1>
+
+      <section aria-labelledby="instance-provider-heading">
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <h2 id="instance-provider-heading">Instance provider</h2>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <InstanceProvider
+              config={instanceProvider}
+              allowCustom={config.customEndpoints !== "off"}
+              suggestions={MODEL_SUGGESTIONS}
+            />
+          </CardContent>
+        </Card>
+      </section>
+
+      <section aria-labelledby="usage-heading">
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <h2 id="usage-heading">Usage (last 30 days)</h2>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table aria-label="Usage (last 30 days)">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Input tokens</TableHead>
+                  <TableHead>Output tokens</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {usage.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-muted-foreground">
+                      No usage yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+                {usage.map((u) => (
+                  <TableRow key={`${u.userId}-${u.role}`}>
+                    <TableCell>{u.email}</TableCell>
+                    <TableCell>{u.role}</TableCell>
+                    <TableCell>{u.inputTokens.toLocaleString("en-US")}</TableCell>
+                    <TableCell>{u.outputTokens.toLocaleString("en-US")}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </section>
 
       <Card>
         <CardHeader>

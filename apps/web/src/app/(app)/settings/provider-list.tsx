@@ -23,14 +23,14 @@ import {
   testProviderAction,
 } from "./actions";
 
-const KIND_NAMES: Record<ProviderConfigView["kind"], string> = {
+export const KIND_NAMES: Record<ProviderConfigView["kind"], string> = {
   anthropic: "Anthropic",
   openai: "OpenAI",
   google: "Google",
   openai_compatible: "OpenAI-compatible endpoint",
 };
 
-const STATUS_LABELS: Record<ProviderConfigView["status"], string> = {
+export const STATUS_LABELS: Record<ProviderConfigView["status"], string> = {
   full: "Full support",
   degraded: "Limited support",
   unsupported: "Not supported",

@@ -24,5 +24,11 @@ export default defineConfig({
       dependencies: ["admin"],
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      name: "instance-provider",
+      testMatch: "instance-provider.spec.ts",
+      dependencies: ["settings"],
+      use: { ...devices["Desktop Chrome"] },
+    },
   ],
 });
