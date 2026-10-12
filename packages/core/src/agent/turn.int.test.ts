@@ -213,7 +213,7 @@ describe("runTurn", () => {
     expect(row).toMatchObject({ status: "complete", skills: [] });
   });
 
-  it("still gives the safety response when the classifier fails (Review Focus 1)", async () => {
+  it("gives the safety response on keyword distress without consulting a broken classifier (Review Focus 1)", async () => {
     const broken = new MockLanguageModelV4({
       doGenerate: async () => {
         throw new APICallError({
@@ -228,6 +228,7 @@ describe("runTurn", () => {
     const chat = new MockLanguageModelV4({ doStream: textStream("should not run") });
     const { result } = await turn({ classify: broken, chat }, userMsg("I want to end my life"));
     expect(result.text).toBe(SAFETY);
+    expect(broken.doGenerateCalls).toHaveLength(0);
     expect(chat.doStreamCalls).toHaveLength(0);
   });
 
@@ -394,11 +395,39 @@ describe("runTurn", () => {
     expect((await recentMessages(db, "u1", result.sessionId)).map((m) => m.role)).toEqual(["user"]);
   });
 
-  it("refuses without a provider and stores nothing", async () => {
-    vi.mocked(requireLlm).mockRejectedValue(new LlmUnavailableError("none"));
-    await expect(
-      runTurn({ ...testDeps(db), queue: fakeQueue() }, { userId: "u1", message: userMsg("hi") }),
-    ).rejects.toMatchObject({ reason: "none" });
-    expect(await db.select().from(schema.messages)).toEqual([]);
-  });
+  it.each(["none", "auth_failed"] as const)(
+    "refuses without a usable provider (%s) and stores nothing",
+    async (reason) => {
+      vi.mocked(requireLlm).mockRejectedValue(new LlmUnavailableError(reason));
+      await expect(
+        runTurn({ ...testDeps(db), queue: fakeQueue() }, { userId: "u1", message: userMsg("hi") }),
+      ).rejects.toMatchObject({ reason });
+      expect(await db.select().from(schema.messages)).toEqual([]);
+    },
+  );
+
+  it.each(["none", "auth_failed"] as const)(
+    "still answers a crisis message with the safety response without a usable provider (%s) (R17)",
+    async (reason) => {
+      vi.mocked(requireLlm).mockRejectedValue(new LlmUnavailableError(reason));
+      const queue = fakeQueue();
+      let result: TurnResult | undefined;
+      const res = await runTurn(
+        { ...testDeps(db), queue },
+        { userId: "u1", message: userMsg("I want to end my life") },
+        {
+          onTurnEnd: async (r) => {
+            result = r;
+          },
+        },
+      );
+      await readUIStream(res);
+      expect(result).toMatchObject({ status: "complete", text: SAFETY });
+      expect((await recentMessages(db, "u1", result?.sessionId ?? "")).map((m) => m.role)).toEqual([
+        "user",
+        "assistant",
+      ]);
+      expect(await db.select().from(schema.llmUsage)).toEqual([]);
+    },
+  );
 });

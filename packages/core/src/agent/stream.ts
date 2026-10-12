@@ -1,5 +1,9 @@
 import type { ToolExecutionOptions, ToolSet, UIMessage, UIMessageStreamWriter } from "ai";
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../errors";
 import { StructuredOutputError } from "../llm/generate";
+import { createLogger } from "../logger";
+
+const log = createLogger("agent");
 
 const FIRST_OUTPUT = new Set([
   "text-delta",
@@ -64,7 +68,7 @@ export function guardTools(tools: ToolSet, state: { failures: number }): ToolSet
         } catch (e) {
           if (!(e instanceof StructuredOutputError)) throw e;
           state.failures++;
-          throw new Error(
+          throw new ValidationError(
             state.failures === 1
               ? `The generated result was invalid (${e.issues.join("; ")}). You may try once more.`
               : "I couldn't produce a valid result. Try again, or rephrase your request.",
@@ -86,4 +90,23 @@ export function writeText<M extends UIMessage>(
   writer.write({ type: "text-delta", id, delta: text });
   writer.write({ type: "text-end", id });
   writer.write({ type: "finish" });
+}
+
+const USER_FACING = [
+  ValidationError,
+  NotFoundError,
+  ConflictError,
+  ForbiddenError,
+  StructuredOutputError,
+];
+
+/**
+ * Text for a tool error part (shown in the tool card and stored). Domain errors carry user copy;
+ * anything else (e.g. a failed query with its SQL) gets a generic message.
+ */
+export function toolErrorText(e: unknown): string {
+  if (typeof e === "string") return e; // the SDK's own invalid-tool-call messages
+  if (USER_FACING.some((c) => e instanceof c)) return (e as Error).message;
+  log.warn({ err: e instanceof Error ? e.name : typeof e }, "tool failed");
+  return "That didn't work. Please try again.";
 }

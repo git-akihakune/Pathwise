@@ -1,8 +1,9 @@
 import { type ToolSet, tool } from "ai";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { NotFoundError, ValidationError } from "../errors";
 import { StructuredOutputError } from "../llm/generate";
-import { guardTools, peekForEarlyError } from "./stream";
+import { guardTools, peekForEarlyError, toolErrorText } from "./stream";
 
 type Part = { type: string; error?: unknown };
 const streamOf = (parts: Part[]) =>
@@ -65,5 +66,24 @@ describe("guardTools", () => {
       "I couldn't produce a valid result. Try again, or rephrase your request.",
     );
     expect(state.failures).toBe(2);
+  });
+});
+
+describe("toolErrorText", () => {
+  it("passes domain error messages and SDK strings through", () => {
+    expect(toolErrorText(new NotFoundError("No occupation matches “x”."))).toBe(
+      "No occupation matches “x”.",
+    );
+    expect(toolErrorText(new ValidationError("weekOf must be a Monday."))).toBe(
+      "weekOf must be a Monday.",
+    );
+    expect(toolErrorText("Model tried to call unavailable tool 'x'.")).toBe(
+      "Model tried to call unavailable tool 'x'.",
+    );
+  });
+  it("hides infrastructure errors behind a generic message", () => {
+    expect(toolErrorText(new Error('Failed query: select * from "proposals" where id = $1'))).toBe(
+      "That didn't work. Please try again.",
+    );
   });
 });

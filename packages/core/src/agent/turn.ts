@@ -18,7 +18,14 @@ import { LlmUnavailableError } from "../errors";
 import { getSafetyResources } from "../instance";
 import type { JobQueue } from "../jobs/queue";
 import { JOBS } from "../jobs/queue";
-import { isAuthError, type LlmDeps, markAuthFailed, recordUsage, requireLlm } from "../llm";
+import {
+  isAuthError,
+  type Llm,
+  type LlmDeps,
+  markAuthFailed,
+  recordUsage,
+  requireLlm,
+} from "../llm";
 import { createLogger } from "../logger";
 import { hybridSearch, type RetrievedItem } from "../memory/retrieval";
 import { getSnapshotText } from "../memory/snapshot";
@@ -58,7 +65,7 @@ import {
   type WorkflowTurn,
 } from "./registry";
 import { selectSkills } from "./select";
-import { guardTools, peekForEarlyError, writeText } from "./stream";
+import { guardTools, peekForEarlyError, toolErrorText, writeText } from "./stream";
 
 const log = createLogger("agent");
 
@@ -97,15 +104,11 @@ function formatRetrieved(i: RetrievedItem): string {
   return `[earlier session ${i.createdAt.toISOString().slice(0, 10)}] ${i.text}`;
 }
 
-/** Text for a tool error part: domain errors carry user-readable messages. */
-const toolErrorText = (e: unknown) =>
-  typeof e === "string" ? e : e instanceof Error ? e.message : "The tool failed.";
-
 /**
  * Runs one chat turn and returns its UI message stream response. Throws `LlmUnavailableError`
  * before storing anything when there is no usable provider, and `LlmUnavailableError("auth_failed")`
  * when the key is rejected before streaming (R11). Acute distress gets the safety response
- * without any model call (R17).
+ * without any model call, even without a usable provider (R17).
  */
 export async function runTurn(
   deps: TurnDeps,
@@ -114,8 +117,14 @@ export async function runTurn(
 ): Promise<Response> {
   const { db } = deps;
   const { userId, message, workflow } = input;
-  const llm = await requireLlm(deps, userId);
   const text = textOf(message);
+  const keyword = keywordDistress(text);
+  // A crisis message gets the safety response even without a usable provider (R17); anything
+  // else refuses before storing anything.
+  const llm = await requireLlm(deps, userId).catch((e: unknown) => {
+    if (e instanceof LlmUnavailableError && keyword === "acute") return null;
+    throw e;
+  });
   const now = new Date();
 
   // Persist the user message; an already-stored id means "regenerate".
@@ -137,9 +146,9 @@ export async function runTurn(
   }
 
   // The keyword check needs no model, so the crisis path survives a failing classifier (R17).
-  let distress: Distress = keywordDistress(text);
+  let distress: Distress = keyword;
   let classified: SkillId[] = [];
-  if (!workflow && distress !== "acute") {
+  if (llm && !workflow && distress !== "acute") {
     const history = (await recentMessages(db, userId, sessionId, 5))
       .filter((m) => m.id !== message.id)
       .slice(-4);
@@ -162,11 +171,12 @@ export async function runTurn(
     status: "complete",
   };
 
-  let sections: Omit<AssembleInput, "contextWindow" | "scale"> | undefined;
+  // Set unless the reply is the safety response; llm is null only for acute distress.
+  let chat: { llm: Llm; sections: Omit<AssembleInput, "contextWindow" | "scale"> } | undefined;
   let tools: ToolSet = {};
   let skillIds: SkillId[] = [];
   const guard = { failures: 0 };
-  if (!acute) {
+  if (llm && !acute) {
     const [settings, recent, snapshot, activePlan, retrieved, after] = await Promise.all([
       getUserSettings(db, userId),
       recentSkills(db, userId, sessionId),
@@ -204,7 +214,7 @@ export async function runTurn(
     // Providers expect the conversation to start with the user.
     while (history.length > 1 && history[0]?.role === "assistant") history.shift();
 
-    sections = {
+    const sections = {
       persona: buildPersona({
         bluntness: settings.bluntness,
         distress: distress === "elevated" ? "elevated" : "none",
@@ -219,6 +229,7 @@ export async function runTurn(
       sessionSummary: state.summary,
       messages: history,
     };
+    chat = { llm, sections };
   }
 
   // Proposals reference the assistant message, so it exists before any tool runs (Spec gaps 5).
@@ -273,15 +284,15 @@ export async function runTurn(
       if (usage && usage.inputTokens + usage.outputTokens > 0) {
         await recordUsage(db, {
           userId,
-          providerConfigId: llm.providerConfigId,
-          model: llm.modelId("main") ?? "unknown",
+          providerConfigId: chat?.llm.providerConfigId ?? null,
+          model: chat?.llm.modelId("main") ?? "unknown",
           role: "main",
           purpose: "chat",
           ...usage,
         });
       }
       const error = streamError ?? (outcome.status === "failed" ? outcome.error : undefined);
-      if (isAuthError(error)) await markAuthFailed(db, llm.providerConfigId);
+      if (chat && isAuthError(error)) await markAuthFailed(db, chat.llm.providerConfigId);
 
       await send(
         JOBS.sessionCurate,
@@ -317,19 +328,20 @@ export async function runTurn(
 
   const respond = async (writer: UIMessageStreamWriter<CoachUIMessage>) => {
     writer.write({ type: "start", messageId: assistantId, messageMetadata: metadata });
-    if (!sections) {
+    if (!chat) {
       writeText(writer, SAFETY_RESPONSE(await getSafetyResources(db)));
       return;
     }
+    const { llm: chatLlm, sections } = chat;
     for (const scale of [1, 0.7]) {
       afterRetry = scale < 1;
       assembled = assembleContext({
         ...sections,
-        contextWindow: llm.capabilities.contextWindow,
+        contextWindow: chatLlm.capabilities.contextWindow,
         scale,
       });
       const current = streamText({
-        model: llm.model("main", "chat"),
+        model: chatLlm.model("main", "chat"),
         instructions: assembled.instructions,
         messages: await convertToModelMessages(assembled.messages, {
           tools,
