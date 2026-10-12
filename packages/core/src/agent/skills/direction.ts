@@ -1,12 +1,11 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { NotFoundError } from "../../errors";
+import { StructuredOutputError } from "../../llm";
 import { createProposal } from "../../services/proposals";
 import { getOccupation, searchOccupations } from "../../taxonomy";
 import { registerSkill, type SkillContext } from "../registry";
-import { generateCareerPaths } from "./career-paths";
-
-const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+import { clip, generateCareerPaths } from "./career-paths";
 
 // Plain tool schemas (R5); createProposal validates the real path payload.
 const searchInput = z.object({
@@ -82,12 +81,29 @@ function directionTools(ctx: SkillContext) {
       description:
         "Draft 2-4 career paths grounded in occupations and the user's profile. Optionally focus on a theme.",
       inputSchema: generateInput,
-      execute: ({ focus }) => generateCareerPaths(ctx.deps, ctx.llm, ctx.userId, focus),
+      execute: async ({ focus }) => {
+        try {
+          return await generateCareerPaths(ctx.deps, ctx.llm, ctx.userId, focus);
+        } catch (e) {
+          if (!(e instanceof StructuredOutputError)) throw e;
+          return {
+            paths: [],
+            note: "I couldn't ground enough paths in real occupations. Try a narrower focus, or tell me more about what you're looking for.",
+          };
+        }
+      },
     }),
     proposeSavePath: tool({
       description: "Suggest saving a career path the user wants to keep. The user approves it.",
       inputSchema: pathInput,
       execute: async (input) => {
+        const unknown: string[] = [];
+        for (const code of input.occupationCodes) {
+          if (!(await getOccupation(ctx.deps.db, code))) unknown.push(code);
+        }
+        if (unknown.length > 0) {
+          throw new NotFoundError(`Unknown occupation codes: ${unknown.join(", ")}.`);
+        }
         const p = await createProposal(ctx.deps.db, ctx.userId, {
           kind: "path_save",
           payload: input,

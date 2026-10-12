@@ -139,4 +139,34 @@ it("getOccupation returns the lookup, and proposeSavePath creates a path_save pr
   );
   await runTool(tools, "proposeSavePath", path("Registered Nurse", ["29-1141.00"], []));
   expect((await listProposals(db, "u1")).map((p) => p.kind)).toEqual(["path_save"]);
+  await expect(
+    runTool(tools, "proposeSavePath", path("Made up", ["29-1141.00", "00-0000.00"], [])),
+  ).rejects.toThrow("Unknown occupation codes: 00-0000.00.");
+  expect(await listProposals(db, "u1")).toHaveLength(1);
+});
+
+it("generateCareerPaths tool returns a note when too few paths are grounded", async () => {
+  const s = await getOrStartSession(db, "u1");
+  const { id: messageId } = await appendMessage(db, "u1", s.id, {
+    role: "assistant",
+    parts: [],
+    status: "interrupted",
+  });
+  const main = new MockLanguageModelV4({
+    doGenerate: jsonReply({
+      paths: [path("A", ["29-1141.00"], []), path("B", ["00-0000.00"], [])],
+    }),
+  });
+  const tools = getSkill("direction").tools({
+    deps,
+    llm: llmWith(main),
+    userId: "u1",
+    sessionId: s.id,
+    messageId,
+    timezone: "UTC",
+  });
+  expect(await runTool(tools, "generateCareerPaths", {})).toMatchObject({
+    paths: [],
+    note: expect.stringContaining("narrower focus"),
+  });
 });

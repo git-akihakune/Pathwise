@@ -55,7 +55,7 @@ const generatedSchema = z.object({
     .max(4),
 });
 
-const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+export const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
 export async function generateCareerPaths(
   deps: LlmDeps,
