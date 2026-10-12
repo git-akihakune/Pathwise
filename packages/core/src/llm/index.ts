@@ -3,6 +3,7 @@ export * from "./factory";
 export * from "./generate";
 export * from "./mock";
 export * from "./models";
+export * from "./probe";
 export * from "./resolve";
 export * from "./tokens";
 export * from "./types";
