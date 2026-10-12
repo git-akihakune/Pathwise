@@ -24,10 +24,12 @@
     "taxonomy:build": "tsx scripts/taxonomy/build.ts"
   },
   "devDependencies": {
+    "@ai-sdk/provider": "4.0.26",
     "@biomejs/biome": "^2.5.15",
     "@playwright/test": "~1.64.0",
     "@testcontainers/postgresql": "^12.2.0",
     "@types/node": "^24.0.0",
+    "ai": "~7.0.137",
     "csv-parse": "^7.0.3",
     "drizzle-orm": "^0.45.4",
     "fflate": "^0.8.3",

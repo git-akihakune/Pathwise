@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { LanguageModelV4GenerateResult } from "@ai-sdk/provider";
+import type { EmbeddingModel, LanguageModel } from "ai";
 import { inject } from "vitest";
 import type { AppConfig } from "../../packages/core/src/config";
 import { encryptSecret } from "../../packages/core/src/crypto";
@@ -9,6 +11,7 @@ import { type Db, schema } from "../../packages/core/src/db";
 import type { JobQueue } from "../../packages/core/src/jobs";
 import type {
   Capabilities,
+  Llm,
   LlmDeps,
   ProviderKind,
   ProviderModels,
@@ -111,5 +114,46 @@ export function fakeQueue(): JobQueue & {
     async send(name, data, opts) {
       sent.push(opts ? { name, data, opts } : { name, data });
     },
+  };
+}
+
+const REPLY_USAGE = {
+  inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
+  outputTokens: { total: 5, text: 5, reasoning: undefined },
+};
+
+export function textReply(text: string): LanguageModelV4GenerateResult {
+  return {
+    content: [{ type: "text", text }],
+    finishReason: { unified: "stop", raw: undefined },
+    usage: REPLY_USAGE,
+    warnings: [],
+  };
+}
+
+export function jsonReply(obj: unknown): LanguageModelV4GenerateResult {
+  return textReply(JSON.stringify(obj));
+}
+
+/** An Llm whose models are scripted: `model(role, purpose)` returns models[purpose] ?? models["*"]. */
+export function fakeLlm(o: {
+  userId: string;
+  providerConfigId: string;
+  models: Record<string, LanguageModel>;
+  capabilities?: Partial<Capabilities>;
+  embedding?: { model: EmbeddingModel; modelId: string };
+}): Llm {
+  return {
+    userId: o.userId,
+    providerConfigId: o.providerConfigId,
+    kind: "openai",
+    capabilities: { ...FULL_CAPS, ...o.capabilities },
+    model(_role, purpose) {
+      const m = o.models[purpose] ?? o.models["*"];
+      if (!m) throw new Error(`fakeLlm: no model for purpose "${purpose}"`);
+      return m;
+    },
+    modelId: (role) => `fake-${role}`,
+    embedding: o.embedding ? { ...o.embedding, providerConfigId: o.providerConfigId } : null,
   };
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "instance_settings" ADD COLUMN "safety_resources" jsonb DEFAULT '[{"name":"Find a Helpline","url":"https://findahelpline.com"}]'::jsonb NOT NULL;

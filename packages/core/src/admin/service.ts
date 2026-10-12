@@ -1,7 +1,8 @@
 import { asc, eq } from "drizzle-orm";
+import { z } from "zod";
 import { type Db, schema } from "../db";
-import { ForbiddenError } from "../errors";
-import type { SignupMode } from "../instance";
+import { ForbiddenError, ValidationError } from "../errors";
+import type { SafetyResource, SignupMode } from "../instance";
 import {
   createInvite,
   type Invite,
@@ -67,4 +68,29 @@ export async function listInvites(
 export async function revokeInvite(db: Db, actorId: string, inviteId: string): Promise<void> {
   await assertAdmin(db, actorId);
   await revokeAnyInvite(db, inviteId);
+}
+
+const safetyResourceListSchema = z
+  .array(
+    z.object({
+      name: z.string().trim().min(1).max(80),
+      url: z.url().refine((u) => u.startsWith("http://") || u.startsWith("https://")),
+    }),
+  )
+  .min(1)
+  .max(10);
+
+export async function setSafetyResources(
+  db: Db,
+  actorId: string,
+  list: SafetyResource[],
+): Promise<void> {
+  await assertAdmin(db, actorId);
+  if (list.length === 0) throw new ValidationError("Add at least one safety resource.");
+  const parsed = safetyResourceListSchema.safeParse(list);
+  if (!parsed.success) throw new ValidationError("Each resource needs a name and an http(s) URL.");
+  await db
+    .update(schema.instanceSettings)
+    .set({ safetyResources: parsed.data, updatedAt: new Date() })
+    .where(eq(schema.instanceSettings.id, 1));
 }

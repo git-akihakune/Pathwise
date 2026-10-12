@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, pgTable, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { check, jsonb, pgTable, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { providerConfigs } from "./providers";
 
@@ -12,6 +12,10 @@ export const instanceSettings = pgTable(
       () => providerConfigs.id,
       { onDelete: "set null" },
     ),
+    safetyResources: jsonb("safety_resources")
+      .$type<{ name: string; url: string }[]>()
+      .notNull()
+      .default(sql`'[{"name":"Find a Helpline","url":"https://findahelpline.com"}]'::jsonb`),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

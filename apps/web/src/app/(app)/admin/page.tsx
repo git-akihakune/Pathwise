@@ -1,5 +1,5 @@
 import { listInvites, listUsers } from "@pathwise/core/admin";
-import { getInstanceSettings } from "@pathwise/core/instance";
+import { getInstanceSettings, getSafetyResources } from "@pathwise/core/instance";
 import { MODEL_SUGGESTIONS } from "@pathwise/core/llm";
 import { getInstanceProviderConfig } from "@pathwise/core/services/providers";
 import { usageByUser } from "@pathwise/core/services/usage";
@@ -20,6 +20,7 @@ import { requireAdmin } from "@/lib/session";
 import { revokeInviteAction } from "./actions";
 import { InstanceProvider } from "./instance-provider";
 import { InviteForm } from "./invite-form";
+import { SafetyResourcesForm } from "./safety-resources-form";
 import { SignupModeSelect } from "./signup-mode-select";
 
 const DAY_MS = 86_400_000;
@@ -29,12 +30,13 @@ export default async function AdminPage() {
   await connection();
   const { userId } = await requireAdmin();
   const { db, config } = getServer();
-  const [users, invites, settings, instanceProvider, usage] = await Promise.all([
+  const [users, invites, settings, instanceProvider, usage, safetyResources] = await Promise.all([
     listUsers(db, userId),
     listInvites(db, userId),
     getInstanceSettings(db),
     getInstanceProviderConfig(db, userId),
     usageByUser(db, userId, new Date(Date.now() - 30 * DAY_MS)),
+    getSafetyResources(db),
   ]);
 
   return (
@@ -96,6 +98,20 @@ export default async function AdminPage() {
           </CardContent>
         </Card>
       </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <h2>Safety resources</h2>
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Shown instead of a coaching reply when someone may be in crisis.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <SafetyResourcesForm resources={safetyResources} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

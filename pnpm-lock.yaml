@@ -166,6 +166,9 @@ importers:
 
   .:
     devDependencies:
+      '@ai-sdk/provider':
+        specifier: 4.0.26
+        version: 4.0.26
       '@biomejs/biome':
         specifier: ^2.5.15
         version: 2.5.15
@@ -178,6 +181,9 @@ importers:
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.2
+      ai:
+        specifier: ~7.0.137
+        version: 7.0.137(zod@4.6.7)
       csv-parse:
         specifier: ^7.0.3
         version: 7.0.3

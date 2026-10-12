@@ -1,6 +1,6 @@
 "use server";
 
-import { inviteUser, revokeInvite, setSignupMode } from "@pathwise/core/admin";
+import { inviteUser, revokeInvite, setSafetyResources, setSignupMode } from "@pathwise/core/admin";
 import type { SignupMode } from "@pathwise/core/instance";
 import {
   getInstanceProviderConfig,
@@ -81,5 +81,28 @@ export async function testInstanceProviderAction(): Promise<ProviderFormState> {
     return toFormError(e);
   } finally {
     revalidatePath("/", "layout");
+  }
+}
+
+export type SafetyResourcesState = { saved?: boolean; error?: string } | undefined;
+
+export async function saveSafetyResourcesAction(
+  _prev: SafetyResourcesState,
+  fd: FormData,
+): Promise<SafetyResourcesState> {
+  const { userId } = await requireAdmin();
+  const names = fd.getAll("name").map(String);
+  const urls = fd.getAll("url").map(String);
+  try {
+    await setSafetyResources(
+      getServer().db,
+      userId,
+      names.map((name, i) => ({ name, url: urls[i] ?? "" })),
+    );
+    return { saved: true };
+  } catch (e) {
+    return toFormError(e);
+  } finally {
+    revalidatePath("/admin");
   }
 }
