@@ -10,9 +10,9 @@ export function OriginBanner({ appUrl }: { appUrl: string }) {
   if (!origin || !originMismatch(appUrl, origin)) return null;
   return (
     <Alert variant="destructive">
-      This instance is configured for {appUrl}, but you opened it at {origin}. Sign-in will fail
-      until you open {appUrl} or set APP_URL in .env to the address you use, then run docker compose
-      up -d.
+      This instance is configured for {appUrl}, but you opened it at {origin}. Sign-in may fail and
+      links will point to {appUrl} until you open {appUrl} or set APP_URL in .env to the address you
+      use, then run docker compose up -d.
     </Alert>
   );
 }
