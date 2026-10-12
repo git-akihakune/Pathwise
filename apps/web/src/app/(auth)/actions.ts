@@ -1,6 +1,7 @@
 "use server";
 
 import { createRateLimiter, signUp } from "@pathwise/core/auth";
+import { normalizeEmail } from "@pathwise/core/invites";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getServer } from "@/lib/server";
@@ -14,11 +15,18 @@ const RATE_LIMITED = "Too many attempts. Try again in a minute.";
 const signInLimiter = createRateLimiter({ limit: 10, windowMs: 60_000 });
 const signUpLimiter = createRateLimiter({ limit: 10, windowMs: 60_000 });
 
-function limited(limiter: ReturnType<typeof createRateLimiter>, h: Headers): boolean {
+// The IP bucket is best-effort only: without a trusted proxy x-forwarded-for is client-controlled
+// and spoofable. The per-email bucket is the real per-account bound on guessing.
+function limited(
+  limiter: ReturnType<typeof createRateLimiter>,
+  h: Headers,
+  email: string,
+): boolean {
   if (process.env.NODE_ENV === "test") return false;
-  const ip =
-    h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip")?.trim() || "unknown";
-  return !limiter.allow(ip);
+  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip")?.trim();
+  const ipOk = ip ? limiter.allow(`ip:${ip}`) : true;
+  const emailOk = limiter.allow(`email:${normalizeEmail(email)}`);
+  return !(ipOk && emailOk);
 }
 
 function field(formData: FormData, name: string): string {
@@ -28,7 +36,7 @@ function field(formData: FormData, name: string): string {
 
 export async function signUpAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const h = await headers();
-  if (limited(signUpLimiter, h)) return { error: RATE_LIMITED };
+  if (limited(signUpLimiter, h, field(formData, "email"))) return { error: RATE_LIMITED };
   const result = await signUp(
     getServer(),
     {
@@ -50,7 +58,7 @@ export async function signUpAction(_prev: FormState, formData: FormData): Promis
 
 export async function signInAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const h = await headers();
-  if (limited(signInLimiter, h)) return { error: RATE_LIMITED };
+  if (limited(signInLimiter, h, field(formData, "email"))) return { error: RATE_LIMITED };
   try {
     await getServer().auth.api.signInEmail({
       body: { email: field(formData, "email").trim(), password: field(formData, "password") },
