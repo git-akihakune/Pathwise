@@ -18,5 +18,11 @@ export default defineConfig({
       dependencies: ["auth"],
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      name: "settings",
+      testMatch: "settings.spec.ts",
+      dependencies: ["admin"],
+      use: { ...devices["Desktop Chrome"] },
+    },
   ],
 });

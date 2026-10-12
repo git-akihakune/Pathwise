@@ -10,6 +10,9 @@ export function AppNav({ isAdmin }: { isAdmin: boolean }) {
         <Link href="/" className="text-sm">
           Today
         </Link>
+        <Link href="/settings" className="text-sm">
+          Settings
+        </Link>
         {isAdmin && (
           <Link href="/admin" className="text-sm">
             Admin
