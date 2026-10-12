@@ -8,6 +8,19 @@ export type LookupFn = (host: string) => Promise<string[]>;
 const defaultLookup: LookupFn = async (host) =>
   (await dnsLookup(host, { all: true, verbatim: true })).map((r) => r.address);
 
+const NOT_FOUND_CODES = new Set(["ENOTFOUND", "ENODATA", "EAI_AGAIN", "EAI_FAIL", "EAI_NONAME"]);
+
+/** Real resolvers reject for unknown hosts instead of returning an empty list. */
+async function resolveHost(lookup: LookupFn, host: string): Promise<string[]> {
+  try {
+    return await lookup(host);
+  } catch (err) {
+    const code = (err as { code?: unknown }).code;
+    if (typeof code === "string" && NOT_FOUND_CODES.has(code)) return [];
+    throw err;
+  }
+}
+
 const PRIVATE = new BlockList();
 for (const [net, prefix] of [
   ["0.0.0.0", 8],
@@ -87,7 +100,7 @@ export async function checkCustomEndpoint(
   if (role === "admin" || config.allowPrivateEndpoints) return;
 
   const host = url.hostname.replace(/^\[|\]$/g, "");
-  const addresses = isIP(host) ? [host] : await lookup(host);
+  const addresses = isIP(host) ? [host] : await resolveHost(lookup, host);
   if (addresses.length === 0) throw new ValidationError(`Could not resolve ${host}.`);
   const bad = addresses.find(isPrivateAddress);
   if (bad) {

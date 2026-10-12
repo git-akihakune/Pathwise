@@ -15,6 +15,10 @@ const FIRST_PARTY = {
   google: { baseURL: "https://generativelanguage.googleapis.com/v1beta" },
 };
 
+/** Custom endpoints must not redirect: the policy checked only the configured host. */
+export const noRedirectFetch: typeof fetch = (input, init) =>
+  fetch(input, { ...init, redirect: "error" });
+
 export interface ProviderTarget {
   id: string;
   kind: ProviderKind;
@@ -47,6 +51,7 @@ export function createLanguageModel(
         name: "custom",
         baseURL: target.baseUrl ?? "",
         apiKey: apiKey || undefined,
+        fetch: noRedirectFetch,
         supportsStructuredOutputs:
           opts?.structuredOutputs ?? target.capabilities?.jsonSchema ?? false,
       }).chatModel(id);
@@ -76,6 +81,7 @@ export function createEmbeddingModel(
         name: "custom",
         baseURL: target.baseUrl ?? "",
         apiKey: apiKey || undefined,
+        fetch: noRedirectFetch,
       }).embeddingModel(id);
   }
 }

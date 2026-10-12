@@ -74,6 +74,26 @@ describe("saving", () => {
       "sk-ant-test-abcd",
     );
   });
+  it("stores no last-4 for keys shorter than 8 characters", async () => {
+    const v = await saveProviderConfig(deps, user, { ...anthropic, apiKey: "test", scope: "user" });
+    expect(v.keyLast4).toBeNull();
+  });
+  it("applies a context window edit to tested capabilities without a retest", async () => {
+    const v = await saveProviderConfig(deps, admin, { ...local, scope: "user" });
+    await testProviderConfig(deps, admin, v.id);
+    const edited = await saveProviderConfig(deps, admin, {
+      ...local,
+      apiKey: undefined,
+      contextWindow: 32_000,
+      id: v.id,
+      scope: "user",
+    });
+    expect(edited).toMatchObject({
+      status: "full",
+      contextWindow: 32_000,
+      capabilities: { contextWindow: 32_000 },
+    });
+  });
   it("rejects invalid input", async () => {
     for (const bad of [
       { ...anthropic, apiKey: undefined }, // key required for known providers

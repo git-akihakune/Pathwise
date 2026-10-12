@@ -6,6 +6,7 @@ import { type Db, schema } from "../../db";
 import { NotFoundError, ValidationError } from "../../errors";
 import {
   type Capabilities,
+  contextWindowFor,
   type LlmDeps,
   type ProbeChecks,
   type ProviderKind,
@@ -177,7 +178,7 @@ export async function saveProviderConfig(
   let keyLast4: string | null;
   if (newKey) {
     encryptedKey = encryptSecret(loadKeyring(config), newKey, id);
-    keyLast4 = newKey.slice(-4);
+    keyLast4 = newKey.length >= 8 ? newKey.slice(-4) : null;
   } else if (existing && sameTarget) {
     encryptedKey = existing.encryptedKey;
     keyLast4 = existing.keyLast4;
@@ -224,7 +225,16 @@ export async function saveProviderConfig(
     .update(schema.providerConfigs)
     .set({
       ...fields,
-      ...(reset && { status: "untested", capabilities: null, authFailed: false }),
+      ...(reset
+        ? { status: "untested", capabilities: null, authFailed: false }
+        : existing.capabilities && existing.contextWindow !== contextWindow
+          ? {
+              capabilities: {
+                ...existing.capabilities,
+                contextWindow: contextWindowFor(kind, models.main, contextWindow),
+              },
+            }
+          : {}),
       updatedAt: sql`now()`,
     })
     .where(eq(schema.providerConfigs.id, id))

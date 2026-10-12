@@ -96,3 +96,27 @@ describe("environment isolation", () => {
     },
   );
 });
+
+describe("custom endpoint redirects", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("never follows redirects, for language and embedding models", async () => {
+    const fetchSpy = vi.fn(async () => new Response("{}", { status: 500 }));
+    vi.stubGlobal("fetch", fetchSpy);
+    const cfg = { llmMode: "live" as const };
+    const lm = createLanguageModel(cfg, target("openai_compatible"), "main", "chat");
+    await Promise.resolve(
+      (lm as LanguageModelV4).doGenerate({
+        prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      }),
+    ).catch(() => {});
+    const em = createEmbeddingModel(cfg, target("openai_compatible", "emb"));
+    await (em as unknown as { doEmbed: (o: unknown) => Promise<unknown> })
+      .doEmbed({ values: ["x"] })
+      .catch(() => {});
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    for (const call of fetchSpy.mock.calls) {
+      expect((call as unknown as [string, RequestInit])[1].redirect).toBe("error");
+    }
+  });
+});

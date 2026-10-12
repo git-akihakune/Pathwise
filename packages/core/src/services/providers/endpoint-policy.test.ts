@@ -41,6 +41,18 @@ describe("isPrivateAddress", () => {
 });
 
 describe("checkCustomEndpoint", () => {
+  it.each(["ENOTFOUND", "ENODATA", "EAI_AGAIN"])(
+    "reports %s from the resolver as an unresolvable host",
+    async (code) => {
+      const rejecting: LookupFn = async () => {
+        throw Object.assign(new Error(`getaddrinfo ${code}`), { code });
+      };
+      await expect(
+        checkCustomEndpoint(cfg("all"), "user", "http://typo.example/v1", rejecting),
+      ).rejects.toThrow(/Could not resolve typo\.example/);
+    },
+  );
+
   it("off: nobody, not even admins; admin_only: admins only, private addresses allowed", async () => {
     await expect(
       checkCustomEndpoint(cfg("off"), "admin", "http://public.example/v1", lookup),
