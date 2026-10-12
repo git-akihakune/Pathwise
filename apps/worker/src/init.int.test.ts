@@ -33,4 +33,8 @@ it("is idempotent, installs pg-boss, and imports the taxonomy once", async () =>
     sql`select 1 from information_schema.schemata where schema_name = 'pgboss'`,
   );
   expect(r.rows).toHaveLength(1);
+  const q = await getTestDb().execute(
+    sql`select name from pgboss.queue where name in ('maintenance.tick', 'maintenance.tick.dead')`,
+  );
+  expect(q.rows).toHaveLength(2);
 });

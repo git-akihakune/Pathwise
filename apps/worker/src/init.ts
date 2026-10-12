@@ -1,6 +1,7 @@
 import { ensureSecrets, loadBaseConfig, type SecretName } from "@pathwise/core/config";
 import { createDb, runMigrations } from "@pathwise/core/db";
 import { ensureInstanceSettings } from "@pathwise/core/instance";
+import { coreJobs, ensureQueues } from "@pathwise/core/jobs";
 import { createLogger } from "@pathwise/core/logger";
 import { importTaxonomySnapshot } from "@pathwise/core/taxonomy";
 import { PgBoss } from "pg-boss";
@@ -39,7 +40,8 @@ export async function runInit(
   const boss = new PgBoss(config.databaseUrl);
   boss.on("error", (err) => log.error({ err }, "pg-boss error"));
   await boss.start();
+  await ensureQueues(boss, coreJobs);
   await boss.stop();
-  log.info("pg-boss schema ready");
+  log.info("pg-boss schema and queues ready");
   return { generatedSecrets: generated, taxonomy };
 }

@@ -6,12 +6,15 @@ import { inject } from "vitest";
 import type { AppConfig } from "../../packages/core/src/config";
 import { encryptSecret } from "../../packages/core/src/crypto";
 import { type Db, schema } from "../../packages/core/src/db";
+import type { JobQueue } from "../../packages/core/src/jobs";
 import type {
   Capabilities,
+  LlmDeps,
   ProviderKind,
   ProviderModels,
   ProviderStatus,
 } from "../../packages/core/src/llm/types";
+import { activateProviderConfig } from "../../packages/core/src/services/providers";
 
 export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
   return {
@@ -80,4 +83,33 @@ export async function insertConfig(
     authFailed: row.authFailed ?? false,
   });
   return id;
+}
+
+export async function seedProvider(
+  db: Db,
+  userId: string,
+  opts: { embedding?: string } = {},
+): Promise<string> {
+  const id = await insertConfig(db, testConfig(), {
+    userId,
+    models: { main: "m-main", fast: "m-fast", embedding: opts.embedding },
+  });
+  await activateProviderConfig(db, userId, id);
+  return id;
+}
+
+export function testDeps(db: Db, o: { llmMode?: "live" | "mock" } = {}): LlmDeps {
+  return { db, config: testConfig({ llmMode: o.llmMode ?? "live" }) };
+}
+
+export function fakeQueue(): JobQueue & {
+  sent: { name: string; data: object; opts?: object }[];
+} {
+  const sent: { name: string; data: object; opts?: object }[] = [];
+  return {
+    sent,
+    async send(name, data, opts) {
+      sent.push(opts ? { name, data, opts } : { name, data });
+    },
+  };
 }
