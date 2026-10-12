@@ -3,7 +3,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { LanguageModelV4GenerateResult } from "@ai-sdk/provider";
-import type { EmbeddingModel, LanguageModel } from "ai";
+import type { EmbeddingModel, LanguageModel, ToolSet } from "ai";
 import { MockEmbeddingModelV4 } from "ai/test";
 import { inject } from "vitest";
 import type { AppConfig } from "../../packages/core/src/config";
@@ -171,4 +171,11 @@ export function embeddingModel(
       warnings: [],
     }),
   });
+}
+
+/** Runs a tool's execute the way the AI SDK would, for tests. */
+export async function runTool(tools: ToolSet, name: string, input: unknown): Promise<unknown> {
+  const t = tools[name];
+  if (!t?.execute) throw new Error(`No executable tool: ${name}`);
+  return t.execute(input, { toolCallId: "t1", messages: [], context: undefined });
 }
