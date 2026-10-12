@@ -30,7 +30,7 @@ Pathwise's differentiator is the **relationship over time**: a coach that rememb
 - A new user can go from sign-up to a confirmed Profile, a chosen direction, and a Plan with first weekly actions in one sitting (target: ~30 minutes).
 - Weekly check-ins start on time in the user's timezone, by email (when configured) and in-app, and update the Plan.
 - The coach uses accurate remembered context and never fabricates facts about the user.
-- `docker compose up` plus a filled `.env` yields a working instance, documented step by step.
+- From a fresh clone, `docker compose up` alone (no `.env`, no manual commands) builds, initializes, and serves a working instance. Every component runs as a container (§4.5).
 - Works with Anthropic, OpenAI, and Google keys, and with OpenAI-compatible custom endpoints (verified against a local llama.cpp server).
 - CI runs fully without any LLM API keys.
 
@@ -60,6 +60,7 @@ Application materials, interview prep, job search, offers/negotiation, voice, ca
 | D14 | Missed check-ins | One nudge at +48h, marked missed at +7d, no further emails |
 | D15 | Custom endpoint access | `CUSTOM_ENDPOINTS=admin_only` by default |
 | D16 | License | AGPL-3.0 |
+| D17 | Deployment | Zero-intervention `docker compose up`. All services containerized. Secrets auto-generated, migrations and taxonomy import automatic, all configuration optional |
 
 ---
 
@@ -132,30 +133,39 @@ Nothing is sent or submitted on the user's behalf without explicit approval.
 ### 4.1 Topology
 
 ```
-┌──────────────────────── docker compose ─────────────────────────┐
-│  ┌──────────── web (Next.js 16) ─────────────┐   ┌── worker ──┐ │
-│  │ App Router UI · Route handlers (chat SSE) │   │ pg-boss    │ │
-│  │ Server Actions · Better Auth              │   │ consumers  │ │
-│  └───────────────┬───────────────────────────┘   └─────┬──────┘ │
-│                  ▼      both import packages/core      ▼        │
-│        ┌─────────────────── packages/core ───────────────────┐  │
-│        │ agent runtime · skills · workflows · memory curator │  │
-│        │ domain services · db (Drizzle) · llm · mail · crypto│  │
-│        └───────────────────────┬─────────────────────────────┘  │
-│        ┌──── Postgres 17 + pgvector ────┐   ┌─ files volume ─┐  │
-│        │ app data · job queue · O*NET/  │   │ uploaded CVs   │  │
-│        │ ESCO taxonomy · embeddings     │   │ (or S3-compat) │  │
-│        └────────────────────────────────┘   └────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
+┌───────────────────────── docker compose ──────────────────────────┐
+│  ┌─ init (one-shot) ─┐                                            │
+│  │ secrets · migrate │──── must exit 0 before web/worker start    │
+│  │ taxonomy import   │                                            │
+│  └───────────────────┘                                            │
+│  ┌──────────── web (Next.js 16) ─────────────┐   ┌── worker ──┐   │
+│  │ App Router UI · Route handlers (chat SSE) │   │ pg-boss    │   │
+│  │ Server Actions · Better Auth   :3000      │   │ consumers  │   │
+│  └───────────────┬───────────────────────────┘   └─────┬──────┘   │
+│                  ▼  all three run the same image       ▼          │
+│        ┌─────────────────── packages/core ───────────────────┐    │
+│        │ agent runtime · skills · workflows · memory curator │    │
+│        │ domain services · db (Drizzle) · llm · mail · crypto│    │
+│        └───────────────────────┬─────────────────────────────┘    │
+│        ┌─ postgres (pgvector) ─┐  ┌─ volumes ───────────────────┐ │
+│        │ app data · job queue  │  │ pathwise-db · pathwise-files│ │
+│        │ taxonomy · embeddings │  │ pathwise-secrets            │ │
+│        └───────────────────────┘  └─────────────────────────────┘ │
+└───────────────────────────────────────────────────────────────────┘
         outbound only: LLM providers / custom endpoints, SMTP
 ```
 
 ### 4.2 Repository layout
 
 ```
+compose.yaml           The whole stack (§4.5); works with no .env
+Dockerfile             Single multi-stage image for web, worker, and init
+.env.example           Every optional override, documented
+data/taxonomy/         Bundled, version-pinned O*NET + ESCO snapshot (§6.5)
 apps/
   web/                 Next.js app (UI, route handlers, server actions, auth)
-  worker/              Node process registering pg-boss job handlers
+  worker/              Node process registering pg-boss job handlers; also
+                       hosts the `init` and `pathwise` CLI entrypoints
 packages/
   core/
     src/
@@ -183,6 +193,7 @@ docs/                  Architecture, adding a skill, adding a provider, memory m
 | Concern | Choice |
 |---|---|
 | Runtime | Node 24, pnpm workspaces, TypeScript strict |
+| Containers | Docker Compose v2; `pgvector/pgvector:pg17`; app image on `node:24-slim`, Next.js `standalone` output, non-root user |
 | Web | Next.js 16 App Router, React 19 |
 | UI | Tailwind CSS 4, shadcn/ui |
 | LLM | Vercel AI SDK 7 (`ai`, `@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/google`, `@ai-sdk/openai-compatible`), `useChat` on the client |
@@ -229,6 +240,70 @@ The embedding model may use a different provider config from chat (for example a
 - No `jsonSchema`: prompted JSON with the schema in the prompt → Zod validation → one repair retry including the validation errors.
 - No `tools`: chat runs without tools. Retrieved context is still injected, and Proposals come only from the curator after the session.
 - No `pdfInput`: text extraction only. Scanned PDFs prompt the user to paste text.
+
+### 4.5 Deployment
+
+**The contract:** from a fresh clone, on any host with Docker Compose v2:
+
+1. `docker compose up` builds the image, initializes the database, and serves the app at `http://localhost:3000`.
+2. No `.env` file, no copied config, no manual command.
+3. The first person to register becomes admin and configures an LLM provider in the UI.
+
+Every component runs as a container. Nothing is installed on the host besides Docker.
+
+**Services (`compose.yaml`):**
+
+| Service | Image | Role | Lifecycle |
+|---|---|---|---|
+| `postgres` | `pgvector/pgvector:pg17` | Database + pg-boss queue | Long-running; healthcheck `pg_isready`; volume `pathwise-db`; port not published |
+| `init` | `pathwise` (built from `Dockerfile`), command `init` | 1. generate missing secrets; 2. run Drizzle migrations; 3. import the bundled taxonomy if its version differs from the DB; 4. ensure the `instance_settings` row exists; 5. seed the demo persona if `SEED_DEMO=true` | One-shot and idempotent. Waits for `postgres` healthy; exits 0 on success |
+| `web` | `pathwise`, command `web` | Next.js standalone server | Waits for `init` to complete successfully; healthcheck `GET /api/health` (DB reachable); publishes `${PATHWISE_PORT:-3000}` |
+| `worker` | `pathwise`, command `worker` | pg-boss consumers and cron | Waits for `init` to complete successfully; healthcheck via heartbeat file |
+
+- All long-running services use `restart: unless-stopped`.
+- Compose files declare `build:`, so a clone works without any registry. Published images (GHCR) may be added later as `image:` alongside `build:`.
+
+**One image, three entrypoints.**
+
+- A multi-stage `Dockerfile` builds the pnpm workspace once. It produces the Next.js `standalone` output and a bundled Node entry for worker, init, and CLI.
+- The entrypoint dispatches on its first argument: `web | worker | init | pathwise <cli-args>`.
+- It runs as a non-root user.
+
+**Secrets with no setup.**
+
+- `APP_ENCRYPTION_KEY` and `BETTER_AUTH_SECRET` are read from the environment if set. Otherwise they are read from `/var/lib/pathwise/secrets/<name>` (volume `pathwise-secrets`).
+- `init` generates any missing secret on first boot (32 random bytes, base64, file mode 0600).
+- **Back up `pathwise-secrets` together with `pathwise-db`.** Losing it makes stored API keys undecryptable. Users would have to re-enter keys; all other data is unaffected.
+
+**Configuration is entirely optional.** Compose automatically reads a `.env` file next to `compose.yaml` if one exists, and `.env.example` documents every variable:
+
+| Variable | Default | Notes |
+|---|---|---|
+| `APP_URL` | `http://localhost:3000` | Public URL, used in emails and auth callbacks |
+| `PATHWISE_PORT` | `3000` | Host port for `web` |
+| `POSTGRES_PASSWORD` | `pathwise` | Postgres is only reachable on the internal compose network |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | unset | Unset disables email (§8) |
+| `CUSTOM_ENDPOINTS` | `admin_only` | §10 |
+| `ALLOW_PRIVATE_ENDPOINTS` | `false` | §10 |
+| `SEED_DEMO` | `false` | Load the demo persona during `init` |
+| `LOG_CONTENT` | `false` | Development only |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | unset | Optional tracing |
+
+**LLMs running on the host.**
+
+- `web` and `worker` declare `extra_hosts: ["host.docker.internal:host-gateway"]`.
+- This lets a llama.cpp (or Ollama, etc.) server on the host be reached at `http://host.docker.internal:<port>/v1` on Linux, macOS, and Windows alike.
+
+**Operations.**
+
+| Task | Command |
+|---|---|
+| Upgrade | `git pull && docker compose up -d --build`. `init` applies new migrations before `web` and `worker` restart |
+| Logs | `docker compose logs -f web worker` |
+| Admin CLI | `docker compose exec worker pathwise <command>`, e.g. `admin reset-password <email>`, `admin rotate-encryption-key`, `seed demo` |
+| Backup | `pg_dump` via `docker compose exec postgres`, plus copies of the `pathwise-files` and `pathwise-secrets` volumes (documented in the self-hosting guide) |
+
+**Development** happens in the devcontainer, which includes Docker via the `docker-in-docker` feature so it can run the stack and the integration-test database. The implementation plan fixes the exact developer workflow (hot reload, which services run where). The production `docker compose up` path must not depend on it.
 
 ---
 
@@ -401,7 +476,18 @@ The Profile screen shows experiences, education, and skills, plus memory items i
 - **`occupation_skills`:** `occupation_id`, `taxonomy_skill_id`, `importance` (normalized 0–1), `level` (nullable).
 - **`occupation_relations`:** `from_id`, `to_id`, `kind` (`related` | `crosswalk`).
 
-Loaded by `pnpm seed:taxonomy` from the official O\*NET database (CC BY 4.0) and the ESCO CSV export (attribution required), with pinned versions recorded in the import metadata. The ESCO–O\*NET crosswalk populates `crosswalk` relations where available.
+**Source data:**
+
+- The official O\*NET database (CC BY 4.0) and the ESCO CSV export (redistribution allowed with attribution).
+- The ESCO–O\*NET crosswalk populates `crosswalk` relations where available.
+
+**Getting it into the database:**
+
+1. A maintainer script, `pnpm taxonomy:build`, downloads the pinned versions and reduces them to the fields above (English only).
+2. It writes a compact gzipped JSONL snapshot plus a `manifest.json` (source versions, checksum) to `data/taxonomy/`, which is committed to the repo.
+3. `init` imports the snapshot into Postgres whenever the manifest version differs from the version recorded in the DB.
+
+No network access is needed at boot. Taxonomy embeddings, if wanted, are computed later by the worker once an embedding model is configured.
 
 ### 6.6 Data rights
 
@@ -431,11 +517,11 @@ All jobs are defined in `packages/core/jobs` with Zod payload schemas and run by
 
 ## 8. Email & calendar
 
-- **Transport:** Nodemailer SMTP configured via environment (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`). If not set, email features are disabled instance-wide and Admin shows a banner.
+- **Transport:** Nodemailer SMTP configured via the optional `SMTP_*` variables (§4.5). If they are not set, email features are disabled instance-wide and Admin shows a banner.
 - **Templates (React Email):** weekly check-in, nudge, invite, password reset, email verification.
 - **Check-in email:** week summary (done/remaining actions, one encouraging line), a "Start check-in" link to the app (normal login required; no magic-login tokens).
 - **Calendar invite:** when the check-in schedule is set or changed, an email with a `.ics` attachment (`METHOD:REQUEST`, weekly `RRULE`, stable per-user `UID` so updates replace the event; `METHOD:CANCEL` when disabled).
-- **Without SMTP:** email verification and password reset are unavailable. The admin resets passwords via CLI (`pnpm admin:reset-password <email>`).
+- **Without SMTP:** email verification and password reset are unavailable. The admin resets passwords via CLI (`docker compose exec worker pathwise admin reset-password <email>`).
 
 ---
 
@@ -459,7 +545,7 @@ All jobs are defined in `packages/core/jobs` with Zod payload schemas and run by
 ## 10. Security & privacy
 
 - **Auth:** Better Auth with secure, HTTP-only cookies; rate limits on sign-in and sign-up. The first registered user becomes admin. After that, `signup_mode` defaults to `invite_only`.
-- **Secrets:** API keys are encrypted with AES-256-GCM using `APP_ENCRYPTION_KEY` (32 bytes, base64), decrypted only in server code, never returned to the client (only the last 4 characters are shown), and never logged. `pnpm admin:rotate-encryption-key` re-encrypts all keys.
+- **Secrets:** API keys are encrypted with AES-256-GCM using `APP_ENCRYPTION_KEY` (32 bytes, base64; auto-generated by `init` unless provided, §4.5), decrypted only in server code, never returned to the client (only the last 4 characters are shown), and never logged. `pathwise admin rotate-encryption-key` re-encrypts all keys.
 - **Custom endpoints:** `CUSTOM_ENDPOINTS=admin_only | all | off` (default `admin_only`). Admins may target private/loopback addresses (needed for local llama.cpp). When non-admins are allowed (`all`), base URLs resolving to private, loopback, or link-local ranges are rejected unless `ALLOW_PRIVATE_ENDPOINTS=true`.
 - **Prompt injection:** documents and pasted text are placed in delimited data blocks with an instruction to treat them as data. All writes require human approval. v1 has no outbound tools besides LLM calls.
 - **Uploads:** 10 MB max, MIME type sniffed from content (PDF, DOCX, TXT only), stored outside the web root under random names.
@@ -475,6 +561,7 @@ All jobs are defined in `packages/core/jobs` with Zod payload schemas and run by
 | Unit | Vitest | Context budgeting and trimming, skill selection, workflow transitions, Proposal application and staleness, crypto, check-in due-time computation across timezones and DST, retrieval fusion |
 | Integration | Vitest + Postgres 17/pgvector in Docker; AI SDK mock language models | Services against a real DB; turn pipeline with scripted model outputs; curator routing; job handlers |
 | E2E | Playwright, `LLM_MODE=mock` | Onboarding, chat → approval card → applied, plan editing, check-in flow, settings/provider test (mock), data export |
+| Compose smoke (CI) | `docker compose up -d --build --wait` on a clean checkout with no `.env` | Proves the §4.5 contract: `init` exits 0, `/api/health` returns 200, the sign-up page renders, and a second `up` is idempotent (no re-seed, no new secrets) |
 | Local smoke | `pnpm smoke:local` | Capability probe + one onboarding pass against `LOCAL_LLM_BASE_URL` (llama.cpp). Degraded status is acceptable |
 | Evals | `evals/`, real key, run manually | Personas (career changer, new grad, burned-out senior, returning parent, tradesperson) × scenarios. LLM-judge rubric: no fabrication, coach-style questioning in exploratory topics, well-formed Proposals, appropriate distress handling, grounded skill gaps. Results stored as JSON for regression comparison |
 
@@ -484,8 +571,8 @@ All jobs are defined in `packages/core/jobs` with Zod payload schemas and run by
 
 ## 12. Open-source readiness & developer experience
 
-- README with the architecture diagram, a short demo GIF, and quick start (`cp .env.example .env`, `docker compose up`, open the browser, register the admin).
-- `pnpm seed:taxonomy` (O\*NET + ESCO import), `pnpm seed:demo` (demo persona with Profile, Stories, chosen path, Plan, and chat history).
+- README with the architecture diagram, a short demo GIF, and a two-step quick start: `docker compose up`, then open `http://localhost:3000` and register (that account becomes admin).
+- The taxonomy imports automatically (§6.5). The demo persona (Profile, Stories, chosen path, Plan, chat history) loads with `SEED_DEMO=true` or `docker compose exec worker pathwise seed demo`.
 - `docs/`: architecture, adding a skill, adding a provider, memory model, self-hosting guide (SMTP, local LLMs, backups).
 - `LICENSE` (AGPL-3.0), `CONTRIBUTING.md`, attribution notices for O\*NET and ESCO.
 - Optional OpenTelemetry via the AI SDK's telemetry hooks, off by default (`OTEL_EXPORTER_OTLP_ENDPOINT`).
@@ -506,5 +593,6 @@ All jobs are defined in `packages/core/jobs` with Zod payload schemas and run by
 - **Taxonomy bias:** O\*NET is US-centric and ESCO EU-centric; occupations elsewhere map imperfectly. Mitigation: the coach treats taxonomy matches as reference points, not verdicts, and region packs can add local taxonomies later.
 - **Small local models:** a 4B model will likely be `degraded`. That is acceptable for smoke testing; product quality is judged on frontier models.
 - **Per-message classifier cost:** one extra `fast` call per chat message. If it proves costly, replace it with heuristics plus classification only on topic shifts.
+- **Bundled taxonomy size:** the committed snapshot must stay small (target: under 20 MB gzipped). If it grows beyond that, move it to a GitHub Release asset fetched during `docker build`, which keeps runtime boot offline.
 - **Self-hosted email deliverability:** depends on the operator's SMTP. The docs recommend a transactional provider.
 - **Intake length:** the ~10-minute intake may feel long; the skip and "finish later" paths must work well. To be validated in user testing.
