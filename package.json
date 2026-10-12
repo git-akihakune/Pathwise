@@ -18,10 +18,12 @@
     "dev:init": "tsx --env-file=dev.env apps/worker/src/main.ts init",
     "dev:worker": "tsx watch --env-file=dev.env apps/worker/src/main.ts worker",
     "dev:web": "pnpm --filter @pathwise/web dev",
+    "e2e": "bash scripts/e2e.sh",
     "dev": "pnpm dev:db && pnpm dev:init && pnpm -w run --parallel \"/^dev:(web|worker)$/\""
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
+    "@playwright/test": "~1.64.0",
     "@testcontainers/postgresql": "^12.2.0",
     "@types/node": "^24.0.0",
     "drizzle-orm": "^0.45.4",

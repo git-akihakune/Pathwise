@@ -18,9 +18,15 @@ dc up -d --build --wait web worker
 assert_init_ok
 curl -fsS http://localhost:3000/api/health | grep -q '"ok"'
 
+curl -fsS http://localhost:3000/sign-up | grep -q "Create the admin account"
+
+init_started() { docker inspect -f '{{.State.StartedAt}}' "$(dc ps -aq init)"; }
+init_first=$(init_started)
+
 before=$(dc exec -T worker sh -c 'sha256sum /var/lib/pathwise/secrets/*')
 dc up -d --wait web worker
 assert_init_ok
+[ "$(init_started)" != "$init_first" ] || { echo "init did not re-run on second up" >&2; exit 1; }
 after=$(dc exec -T worker sh -c 'sha256sum /var/lib/pathwise/secrets/*')
 [ "$before" = "$after" ] || { echo "secrets changed across restarts" >&2; exit 1; }
 
