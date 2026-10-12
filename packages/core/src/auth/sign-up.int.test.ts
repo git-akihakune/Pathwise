@@ -4,7 +4,7 @@ import { getTestDb, resetDb } from "../../../../test/integration/db";
 import { schema } from "../db";
 import { ensureInstanceSettings } from "../instance";
 import { createInvite } from "../invites";
-import { countUsers, createAuth, signUp } from ".";
+import { countUsers, createAuth, signUp, userExists } from ".";
 
 const db = getTestDb();
 const auth = createAuth({
@@ -78,6 +78,11 @@ describe("signUp", () => {
       { ok: false, reason: "weak_password" },
     );
   });
+  it("maps over-long passwords to weak_password instead of throwing", async () => {
+    expect(
+      await signUp(deps, { name: "Ada", email: "ada@x.io", password: "x".repeat(129) }),
+    ).toEqual({ ok: false, reason: "weak_password" });
+  });
   it("rejects invalid input", async () => {
     expect(await signUp(deps, { name: "", email: "not-an-email", password: pw })).toEqual({
       ok: false,
@@ -89,6 +94,27 @@ describe("signUp", () => {
       auth.api.signUpEmail({ body: { name: "Eve", email: "eve@x.io", password: pw } }),
     ).rejects.toThrow();
     expect(await countUsers(db)).toBe(0);
+  });
+  it("closes the public HTTP sign-in/up routes but not direct auth.api calls", async () => {
+    await signUp(deps, { name: "Ada", email: "ada@x.io", password: pw });
+    for (const path of ["sign-in/email", "sign-up/email"]) {
+      const res = await auth.handler(
+        new Request(`http://localhost:3000/api/auth/${path}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ name: "A", email: "a@x.io", password: "x".repeat(12) }),
+        }),
+      );
+      expect(res.status).toBe(404);
+    }
+    await expect(
+      auth.api.signInEmail({ body: { email: "ada@x.io", password: pw } }),
+    ).resolves.toBeTruthy();
+  });
+  it("reports whether an account exists, case-insensitively", async () => {
+    await signUp(deps, { name: "Ada", email: "ada@x.io", password: pw });
+    expect(await userExists(db, "ADA@x.io")).toBe(true);
+    expect(await userExists(db, "nobody@x.io")).toBe(false);
   });
   it("makes exactly one admin under concurrent bootstrap (Review Focus 1)", async () => {
     const results = await Promise.all([

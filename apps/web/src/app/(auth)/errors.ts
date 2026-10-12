@@ -6,6 +6,6 @@ export const SIGN_UP_ERRORS: Record<SignUpFailure, string> = {
   invite_required: "Sign-up on this instance is by invitation.",
   invite_invalid: "This invitation is no longer valid. Ask your admin for a new one.",
   email_taken: "An account with this email already exists.",
-  weak_password: "Use at least 12 characters.",
+  weak_password: "Use between 12 and 128 characters.",
   invalid_input: "Check your name and email address.",
 };
