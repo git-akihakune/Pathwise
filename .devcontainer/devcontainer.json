@@ -11,12 +11,13 @@
 	},
 
 	"mounts": [
-		"source=/run/host-services/ssh-auth.sock,target=/run/host-services/ssh-auth.sock,type=bind"
+		"source=/run/host-services/ssh-auth.sock,target=/run/host-services/ssh-auth.sock,type=bind",
+		"source=${localWorkspaceFolder}/.claude-data,target=/home/vscode/.claude,type=bind"
 	],
 	"remoteEnv": {
 		"SSH_AUTH_SOCK": "/run/host-services/ssh-auth.sock"
 	},
-	"postStartCommand": "sudo chmod 666 /run/host-services/ssh-auth.sock; mkdir -p ~/.ssh; ssh-add -L > ~/.ssh/agent.pub 2>/dev/null; git config --global user.signingkey ~/.ssh/agent.pub"
+	"postStartCommand": "sudo chmod 666 /run/host-services/ssh-auth.sock; mkdir -p ~/.ssh; ssh-add -L > ~/.ssh/agent.pub 2>/dev/null; git config --global user.signingkey ~/.ssh/agent.pub; ln -sf $HOME/.claude/.claude.json $HOME/.claude.json"
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
