@@ -1,5 +1,7 @@
-import type { MemoryCategory, MemoryItem } from "../services/memory";
-import type { Profile } from "../services/profile";
+import { eq } from "drizzle-orm";
+import { type DbOrTx, schema } from "../db";
+import { listMemory, type MemoryCategory, type MemoryItem } from "../services/memory";
+import { getProfile, type Profile } from "../services/profile";
 
 const MEMORY_LINES: [MemoryCategory, string][] = [
   ["value", "Values"],
@@ -41,4 +43,18 @@ export function renderProfileFallback(profile: Profile, memories: MemoryItem[]):
     if (items.length > 0) lines.push(`${label}: ${items.map((m) => m.content).join("; ")}`);
   }
   return lines.length > 0 ? lines.join("\n") : "The user hasn't shared their background yet.";
+}
+
+/** The stored LLM snapshot, or the deterministic fallback when none exists yet. */
+export async function getSnapshotText(db: DbOrTx, userId: string): Promise<string> {
+  const [row] = await db
+    .select({ content: schema.userSnapshot.content })
+    .from(schema.userSnapshot)
+    .where(eq(schema.userSnapshot.userId, userId));
+  if (row) return row.content;
+  const [profile, memories] = await Promise.all([
+    getProfile(db, userId),
+    listMemory(db, userId, { status: ["active"] }),
+  ]);
+  return renderProfileFallback(profile, memories);
 }

@@ -2,9 +2,13 @@ import { randomUUID } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { LanguageModelV4GenerateResult } from "@ai-sdk/provider";
-import type { EmbeddingModel, LanguageModel, ToolSet } from "ai";
-import { MockEmbeddingModelV4 } from "ai/test";
+import type {
+  LanguageModelV4GenerateResult,
+  LanguageModelV4StreamPart,
+  LanguageModelV4StreamResult,
+} from "@ai-sdk/provider";
+import type { EmbeddingModel, LanguageModel, ToolSet, UIMessageChunk } from "ai";
+import { convertArrayToReadableStream, MockEmbeddingModelV4 } from "ai/test";
 import { inject } from "vitest";
 import type { AppConfig } from "../../packages/core/src/config";
 import { encryptSecret } from "../../packages/core/src/crypto";
@@ -134,6 +138,48 @@ export function textReply(text: string): LanguageModelV4GenerateResult {
 
 export function jsonReply(obj: unknown): LanguageModelV4GenerateResult {
   return textReply(JSON.stringify(obj));
+}
+
+const streamOf = (parts: LanguageModelV4StreamPart[]): LanguageModelV4StreamResult => ({
+  stream: convertArrayToReadableStream<LanguageModelV4StreamPart>([
+    { type: "stream-start", warnings: [] },
+    ...parts,
+  ]),
+});
+const textParts = (deltas: string[]): LanguageModelV4StreamPart[] => [
+  { type: "text-start", id: "t1" },
+  ...deltas.map((delta) => ({ type: "text-delta" as const, id: "t1", delta })),
+  { type: "text-end", id: "t1" },
+];
+
+/** A streamed text reply that finishes with `stop` and the usage of `textReply`. */
+export function textStream(...deltas: string[]): LanguageModelV4StreamResult {
+  return streamOf([
+    ...textParts(deltas),
+    { type: "finish", finishReason: { unified: "stop", raw: undefined }, usage: REPLY_USAGE },
+  ]);
+}
+
+/** A streamed single tool call (id "c1") that finishes with `tool-calls`. */
+export function toolCallStream(toolName: string, input: unknown): LanguageModelV4StreamResult {
+  return streamOf([
+    { type: "tool-call", toolCallId: "c1", toolName, input: JSON.stringify(input) },
+    { type: "finish", finishReason: { unified: "tool-calls", raw: undefined }, usage: REPLY_USAGE },
+  ]);
+}
+
+/** Streams some text, then fails with `error` (a provider dying mid-reply). */
+export function erroringStream(deltas: string[], error: unknown): LanguageModelV4StreamResult {
+  return streamOf([...textParts(deltas), { type: "error", error }]);
+}
+
+/** Reads a UI message stream response body into its chunks (SSE `data:` lines, without `[DONE]`). */
+export async function readUIStream(res: Response): Promise<UIMessageChunk[]> {
+  const body = await res.text();
+  return body
+    .split("\n")
+    .filter((line) => line.startsWith("data: ") && line !== "data: [DONE]")
+    .map((line) => JSON.parse(line.slice("data: ".length)) as UIMessageChunk);
 }
 
 /** An Llm whose models are scripted: `model(role, purpose)` returns models[purpose] ?? models["*"]. */
