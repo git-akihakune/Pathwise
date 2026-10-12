@@ -15,6 +15,13 @@
       "when": 1791828106685,
       "tag": "0001_tranquil_invisible_woman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791836719031,
+      "tag": "0002_complex_pestilence",
+      "breakpoints": true
     }
   ]
 }
