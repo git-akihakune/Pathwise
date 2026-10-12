@@ -43,6 +43,13 @@
       "when": 1791840827717,
       "tag": "0005_absent_felicia_hardy",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791841202097,
+      "tag": "0006_square_starhawk",
+      "breakpoints": true
     }
   ]
 }

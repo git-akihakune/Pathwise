@@ -1,6 +1,19 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  type AnyPgColumn,
+  boolean,
+  check,
+  doublePrecision,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { user } from "./auth";
+import { anyVector, tsvector } from "./columns";
 
 /** Columns every profile table shares, so the three tables below can't drift apart. */
 const common = () => ({
@@ -68,5 +81,38 @@ export const skills = pgTable(
       "skills_level",
       sql`${t.level} is null or ${t.level} in ('basic','working','strong','expert')`,
     ),
+  ],
+);
+
+export const memoryItems = pgTable(
+  "memory_items",
+  {
+    ...common(),
+    // clock_timestamp() so items added in one transaction still sort newest-first.
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`clock_timestamp()`),
+    category: text("category").notNull(),
+    content: text("content").notNull(),
+    confidence: doublePrecision("confidence").notNull().default(1),
+    sensitive: boolean("sensitive").notNull().default(false),
+    status: text("status").notNull().default("active"),
+    supersedesId: uuid("supersedes_id").references((): AnyPgColumn => memoryItems.id, {
+      onDelete: "set null",
+    }),
+    embedding: anyVector("embedding"),
+    embeddingModel: text("embedding_model"),
+    search: tsvector("search").generatedAlwaysAs(sql`to_tsvector('english', "content")`),
+  },
+  (t) => [
+    index("memory_items_user_status_idx").on(t.userId, t.status),
+    index("memory_items_search_idx").using("gin", t.search),
+    sourceCheck("memory_items_source_type", t.sourceType),
+    check(
+      "memory_items_category",
+      sql`${t.category} in ('value','constraint','aspiration','energizer','drain','preference','fact','event','observation')`,
+    ),
+    check("memory_items_confidence", sql`${t.confidence} >= 0 and ${t.confidence} <= 1`),
+    check("memory_items_status", sql`${t.status} in ('active','pending','rejected','superseded')`),
   ],
 );
