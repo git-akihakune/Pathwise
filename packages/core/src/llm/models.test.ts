@@ -1,5 +1,5 @@
 import type { LanguageModelV4 } from "@ai-sdk/provider";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createEmbeddingModel, createLanguageModel } from "./factory";
 import { CONTEXT_WINDOWS, contextWindowFor, MODEL_SUGGESTIONS, staticPdfInput } from "./models";
 import type { ProviderKind } from "./types";
@@ -60,4 +60,39 @@ describe("createLanguageModel (live)", () => {
     expect(createEmbeddingModel({ llmMode: "live" }, target("anthropic", "e"))).toBeNull();
     expect(createEmbeddingModel({ llmMode: "live" }, target("openai", "e"))).not.toBeNull();
   });
+});
+
+describe("environment isolation", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+  it.each([
+    ["anthropic", "ANTHROPIC_API_KEY", "ANTHROPIC_BASE_URL"],
+    ["openai", "OPENAI_API_KEY", "OPENAI_BASE_URL"],
+    ["google", "GOOGLE_GENERATIVE_AI_API_KEY", "GOOGLE_GENERATIVE_AI_BASE_URL"],
+  ] as const)(
+    "%s never uses a key or base URL from the environment",
+    async (kind, keyVar, urlVar) => {
+      vi.stubEnv(keyVar, "env-secret");
+      vi.stubEnv(urlVar, "https://evil.example/v1");
+      const fetchSpy = vi.fn(async () => new Response("{}", { status: 500 }));
+      vi.stubGlobal("fetch", fetchSpy);
+      const m = createLanguageModel(
+        { llmMode: "live" },
+        { ...target(kind), apiKey: null },
+        "main",
+        "test",
+      ) as LanguageModelV4;
+      try {
+        await m.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] });
+      } catch {
+        // the stubbed fetch returns 500
+      }
+      expect(fetchSpy).toHaveBeenCalled();
+      const [url, init] = fetchSpy.mock.calls[0] as unknown as [string, RequestInit];
+      expect(String(url)).not.toContain("evil.example");
+      expect(JSON.stringify([url, init.headers])).not.toContain("env-secret");
+    },
+  );
 });

@@ -6,6 +6,14 @@ import type { EmbeddingModel, LanguageModel } from "ai";
 import type { AppConfig } from "../config";
 import type { Capabilities, LlmPurpose, ProviderKind, ProviderModels } from "./types";
 
+// Explicit string keys and base URLs stop the SDKs from reading *_API_KEY / *_BASE_URL from the
+// environment: no env var may supply a provider key or redirect one.
+const FIRST_PARTY = {
+  anthropic: { baseURL: "https://api.anthropic.com/v1" },
+  openai: { baseURL: "https://api.openai.com/v1" },
+  google: { baseURL: "https://generativelanguage.googleapis.com/v1beta" },
+};
+
 export interface ProviderTarget {
   id: string;
   kind: ProviderKind;
@@ -27,11 +35,11 @@ export function createLanguageModel(
   const apiKey = target.apiKey ?? undefined;
   switch (target.kind) {
     case "anthropic":
-      return createAnthropic({ apiKey })(id);
+      return createAnthropic({ ...FIRST_PARTY.anthropic, apiKey: apiKey ?? "" })(id);
     case "openai":
-      return createOpenAI({ apiKey })(id);
+      return createOpenAI({ ...FIRST_PARTY.openai, apiKey: apiKey ?? "" })(id);
     case "google":
-      return createGoogleGenerativeAI({ apiKey })(id);
+      return createGoogleGenerativeAI({ ...FIRST_PARTY.google, apiKey: apiKey ?? "" })(id);
     case "openai_compatible":
       return createOpenAICompatible({
         name: "custom",
@@ -54,9 +62,12 @@ export function createEmbeddingModel(
     case "anthropic":
       return null;
     case "openai":
-      return createOpenAI({ apiKey }).embeddingModel(id);
+      return createOpenAI({ ...FIRST_PARTY.openai, apiKey: apiKey ?? "" }).embeddingModel(id);
     case "google":
-      return createGoogleGenerativeAI({ apiKey }).embeddingModel(id);
+      return createGoogleGenerativeAI({
+        ...FIRST_PARTY.google,
+        apiKey: apiKey ?? "",
+      }).embeddingModel(id);
     case "openai_compatible":
       return createOpenAICompatible({
         name: "custom",
