@@ -1,7 +1,9 @@
 import { z } from "zod";
+import { embedPending } from "../memory/embed";
 import { JOBS } from "./queue";
 import type { AnyJobDefinition, JobDefinition } from "./register";
 import { findMaintenanceWork } from "./tick";
+import { withUserLlm } from "./with-llm";
 
 const maintenanceTick: JobDefinition<Record<string, never>> = {
   name: JOBS.maintenanceTick,
@@ -18,5 +20,14 @@ const maintenanceTick: JobDefinition<Record<string, never>> = {
   },
 };
 
-/** Tasks 5 and 10 (and Plan 5) append their definitions. */
-export const coreJobs: AnyJobDefinition[] = [maintenanceTick];
+const memoryEmbed: JobDefinition<{ userId: string }> = {
+  name: JOBS.memoryEmbed,
+  policy: "stately",
+  schema: z.object({ userId: z.string() }),
+  async handler(deps, { userId }) {
+    await withUserLlm(deps, userId, (llm) => embedPending(deps, llm, userId).then(() => {}));
+  },
+};
+
+/** Task 10 (and Plan 5) append their definitions. */
+export const coreJobs: AnyJobDefinition[] = [maintenanceTick, memoryEmbed];

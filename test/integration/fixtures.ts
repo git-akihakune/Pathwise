@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { LanguageModelV4GenerateResult } from "@ai-sdk/provider";
 import type { EmbeddingModel, LanguageModel } from "ai";
+import { MockEmbeddingModelV4 } from "ai/test";
 import { inject } from "vitest";
 import type { AppConfig } from "../../packages/core/src/config";
 import { encryptSecret } from "../../packages/core/src/crypto";
@@ -156,4 +157,18 @@ export function fakeLlm(o: {
     modelId: (role) => `fake-${role}`,
     embedding: o.embedding ? { ...o.embedding, providerConfigId: o.providerConfigId } : null,
   };
+}
+
+/** An embedding model returning `map[value] ?? fallback ?? [0, 0, 1]` for each input. */
+export function embeddingModel(
+  map: Record<string, number[]>,
+  fallback?: number[],
+): MockEmbeddingModelV4 {
+  return new MockEmbeddingModelV4({
+    doEmbed: async ({ values }) => ({
+      embeddings: values.map((v) => map[v] ?? fallback ?? [0, 0, 1]),
+      usage: { tokens: values.length },
+      warnings: [],
+    }),
+  });
 }

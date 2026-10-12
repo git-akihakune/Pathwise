@@ -130,6 +130,21 @@ describe("registerJobs", () => {
     );
     expect(await jobCount("test.stately")).toBe(1);
   });
+  it("recreates an existing queue whose policy is wrong", async () => {
+    await boss.createQueue("test.wrongpolicy");
+    await ensureQueues(boss, [
+      {
+        name: "test.wrongpolicy",
+        schema: z.object({}),
+        handler: async () => {},
+        policy: "stately",
+      },
+    ]);
+    expect(await boss.getQueue("test.wrongpolicy")).toMatchObject({
+      policy: "stately",
+      retryLimit: 3,
+    });
+  });
   it("registers the maintenance tick every minute", () => {
     expect(coreJobs.find((d) => d.name === "maintenance.tick")?.cron).toBe("* * * * *");
   });

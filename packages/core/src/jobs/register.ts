@@ -14,17 +14,22 @@ export interface JobDefinition<T> {
 // biome-ignore lint/suspicious/noExplicitAny: a heterogeneous list of definitions with differing payload types
 export type AnyJobDefinition = JobDefinition<any>;
 
-/** Idempotent: creates `<name>.dead` and `<name>` (or updates the retry settings of an existing queue). */
+/** Idempotent: creates `<name>.dead` and `<name>` (or updates the retry settings of an existing queue, recreating it if its policy differs). */
 export async function ensureQueues(boss: PgBoss, defs: AnyJobDefinition[]): Promise<void> {
   for (const def of defs) {
     const deadLetter = `${def.name}.dead`;
     if (!(await boss.getQueue(deadLetter))) await boss.createQueue(deadLetter);
     const settings = { retryLimit: 3, retryBackoff: true, deadLetter };
-    if (await boss.getQueue(def.name)) {
-      await boss.updateQueue(def.name, settings);
-    } else {
-      await boss.createQueue(def.name, { policy: def.policy ?? "standard", ...settings });
+    const policy = def.policy ?? "standard";
+    let existing = await boss.getQueue(def.name);
+    // pg-boss cannot change a queue's policy in place; recreate it (its pending jobs are
+    // regenerable maintenance work, and a wrong policy silently breaks singletonKey).
+    if (existing && existing.policy !== policy) {
+      await boss.deleteQueue(def.name);
+      existing = null;
     }
+    if (existing) await boss.updateQueue(def.name, settings);
+    else await boss.createQueue(def.name, { policy, ...settings });
   }
 }
 
