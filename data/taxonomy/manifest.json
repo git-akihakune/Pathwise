@@ -1,0 +1,36 @@
+{
+  "format": 1,
+  "version": "onet-31.0-3eecceee",
+  "builtAt": "2026-10-12T21:24:40.432Z",
+  "sources": {
+    "onet": {
+      "version": "31.0",
+      "url": "https://www.onetcenter.org/dl_files/database/db_31_0_text.zip",
+      "sha256": "6883548adf5fde64cf6f801b35d15519c9225f2732c3cab0e281c652d16b23a9"
+    },
+    "esco": null,
+    "crosswalk": null
+  },
+  "files": {
+    "occupations.jsonl.gz": {
+      "sha256": "8064ea004a4a3c1166c4cd64bf3afe6b5b34b9cac3961909676cbdebbe31ff80",
+      "bytes": 516817,
+      "rows": 1016
+    },
+    "skills.jsonl.gz": {
+      "sha256": "abed0869c4f81ba282d4cbfaaef67acefcd00942fbca743c954bf45bc1e9dfea",
+      "bytes": 4289,
+      "rows": 68
+    },
+    "occupation_skills.jsonl.gz": {
+      "sha256": "4e8c65c47beb71379815879997b2ecf809e3da23e789b8a167dc5831fac55693",
+      "bytes": 286358,
+      "rows": 52282
+    },
+    "relations.jsonl.gz": {
+      "sha256": "a25906d0be50668c4034e9155ba790d84f8ec287b3e4db39375757f2c9679499",
+      "bytes": 32750,
+      "rows": 9230
+    }
+  }
+}
