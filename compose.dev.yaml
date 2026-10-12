@@ -1,3 +1,5 @@
+name: pathwise-dev
+
 services:
   postgres:
     image: pgvector/pgvector:pg17
@@ -16,3 +18,4 @@ services:
 
 volumes:
   pathwise-dev-db:
+    name: pathwise_pathwise-dev-db
