@@ -106,13 +106,17 @@ function readSecret(name: SecretName, env: NodeJS.ProcessEnv, secretsDir: string
   return readFileSync(path, "utf8").trim();
 }
 
-export function loadSecrets(env: NodeJS.ProcessEnv, secretsDir: string): Secrets {
-  const appEncryptionKey = Buffer.from(readSecret("APP_ENCRYPTION_KEY", env, secretsDir), "base64");
-  if (appEncryptionKey.length !== 32) {
+export function decodeEncryptionKey(raw: string): Buffer {
+  const key = Buffer.from(raw, "base64");
+  if (key.length !== 32) {
     throw new ConfigError("APP_ENCRYPTION_KEY must be 32 bytes, base64-encoded.");
   }
+  return key;
+}
+
+export function loadSecrets(env: NodeJS.ProcessEnv, secretsDir: string): Secrets {
   return {
-    appEncryptionKey,
+    appEncryptionKey: decodeEncryptionKey(readSecret("APP_ENCRYPTION_KEY", env, secretsDir)),
     betterAuthSecret: readSecret("BETTER_AUTH_SECRET", env, secretsDir),
   };
 }
