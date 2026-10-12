@@ -52,7 +52,7 @@ export const actionInputSchema = z.object({
   milestoneId: z.string().uuid().nullish(),
 });
 
-const northStarSchema = z.string().trim().min(1, "Enter a north star.").max(500);
+export const northStarSchema = z.string().trim().min(1, "Enter a north star.").max(500);
 
 export const createPlanInputSchema = z
   .object({

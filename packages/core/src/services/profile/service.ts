@@ -94,9 +94,9 @@ export type SkillInput = z.input<typeof skillInputSchema>;
 
 type Patch<I> = Partial<Omit<I, "sourceType" | "sourceId">>;
 const omitProvenance = { sourceType: true, sourceId: true } as const;
-const experiencePatchSchema = experienceBase.omit(omitProvenance).partial();
-const educationPatchSchema = educationBase.omit(omitProvenance).partial();
-const skillPatchSchema = skillInputSchema.omit(omitProvenance).partial();
+export const experiencePatchSchema = experienceBase.omit(omitProvenance).partial();
+export const educationPatchSchema = educationBase.omit(omitProvenance).partial();
+export const skillPatchSchema = skillInputSchema.omit(omitProvenance).partial();
 
 const currentFirst = <T extends typeof schema.experiences | typeof schema.education>(t: T) => [
   desc(sql`${t.endDate} is null`),

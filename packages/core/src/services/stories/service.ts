@@ -50,7 +50,7 @@ export const storyInputSchema = z.object({
 export type StoryInput = z.input<typeof storyInputSchema>;
 
 // No defaults here: a patch must leave unmentioned fields alone.
-const storyPatchSchema = z.object(fields).partial();
+export const storyPatchSchema = z.object(fields).partial();
 const provenanceSchema = z.object({
   sourceType: z.enum(SOURCES).default("manual"),
   sourceId: z.string().max(200).nullish(),
