@@ -4,19 +4,21 @@
 
 Pathwise is an open-source (AGPL-3.0), self-hostable AI career coach. The approved design is in [docs/superpowers/specs/2026-10-12-pathwise-design.md](docs/superpowers/specs/2026-10-12-pathwise-design.md). Treat it as the source of truth and read the relevant section before changing behaviour. Only v1 is designed in detail; v2–v4 each need their own spec first.
 
-**Status:** pre-implementation. No code or package scripts exist yet. When the monorepo is scaffolded, replace the planned commands below with the real ones.
-
 ## Dev Environment
 `nix` is installed in the devcontainer. You can install and run any tool as needed using nix.
 
-## Commands (planned, per spec)
+## Commands
 
 - pnpm workspaces, Node 24 (devcontainer provides Node and Nix)
+- `pnpm dev`: dev database + init + web + worker
+- `pnpm lint`, `pnpm typecheck`
+- `pnpm test` (unit) and `pnpm test:int` (Testcontainers; needs Docker)
+- A single test: `pnpm test <path> -t "<name>"` / `pnpm test:int <path> -t "<name>"`
+- `pnpm e2e`: Playwright against a fresh compose stack on port 3100
+- `bash scripts/compose-smoke.sh`: boots the compose stack from scratch and checks it (prints `SMOKE OK`)
+- `pnpm --filter @pathwise/core db:generate` after schema changes
 - `docker compose up` brings up the whole stack from a fresh clone with no `.env` and no manual steps: `postgres`, a one-shot `init` (secrets, migrations, taxonomy import), `web` and `worker`. All of them are containers built from one `Dockerfile` (spec §4.5)
-- Admin CLI: `docker compose exec worker pathwise <command>` (e.g. `admin reset-password <email>`, `seed demo`); `SEED_DEMO=true` seeds the demo persona during `init`
-- `pnpm taxonomy:build` (maintainers only) regenerates the bundled O*NET + ESCO snapshot in `data/taxonomy/`
-- Vitest for unit and integration tests (integration uses a real Postgres in Docker); Playwright for E2E with `LLM_MODE=mock`
-- `pnpm smoke:local` runs against a local llama.cpp server at `LOCAL_LLM_BASE_URL` (a 4B model; expect `degraded` capability status)
+- Admin CLI: `docker compose exec worker pathwise <command>` (e.g. `admin reset-password <email>`)
 
 ## Architecture rules
 
