@@ -149,4 +149,5 @@ export async function setMemoryStatusAction(
     if (!(e instanceof NotFoundError || e instanceof ConflictError)) throw e;
   }
   revalidatePath("/profile");
+  revalidatePath("/");
 }

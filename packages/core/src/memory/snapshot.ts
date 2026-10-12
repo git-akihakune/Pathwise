@@ -1,7 +1,15 @@
 import { eq } from "drizzle-orm";
+import { truncateToTokens, wrapData } from "../agent/context";
 import { type DbOrTx, schema } from "../db";
+import { withUserLlm } from "../jobs/with-llm";
+import { generateTextFor } from "../llm/generate";
+import type { LlmDeps } from "../llm/types";
+import { createLogger } from "../logger";
 import { listMemory, type MemoryCategory, type MemoryItem } from "../services/memory";
 import { getProfile, type Profile } from "../services/profile";
+import { getUserSettings } from "../services/settings";
+
+const log = createLogger("memory");
 
 const MEMORY_LINES: [MemoryCategory, string][] = [
   ["value", "Values"],
@@ -57,4 +65,48 @@ export async function getSnapshotText(db: DbOrTx, userId: string): Promise<strin
     listMemory(db, userId, { status: ["active"] }),
   ]);
   return renderProfileFallback(profile, memories);
+}
+
+const SNAPSHOT_INSTRUCTIONS =
+  "Write a compact third-person summary of this person for their career coach: background, strengths, values, constraints, and goals. At most 300 words. Use only the data.";
+
+/**
+ * Regenerates the user's snapshot with the fast model. Without a usable provider, or when
+ * generation fails, the deterministic fallback is stored instead so the maintenance tick does
+ * not re-enqueue the refresh forever.
+ */
+export async function refreshSnapshot(deps: LlmDeps, userId: string): Promise<void> {
+  const { db } = deps;
+  const { profileVersion } = await getUserSettings(db, userId);
+  const [profile, memories] = await Promise.all([
+    getProfile(db, userId),
+    listMemory(db, userId, { status: ["active"] }),
+  ]);
+  const fallback = renderProfileFallback(profile, memories);
+  let content = fallback;
+  try {
+    await withUserLlm(deps, userId, async (llm) => {
+      const notes = memories
+        .filter((m) => m.category === "fact" || m.category === "event")
+        .map((m) => `- ${m.content}`)
+        .join("\n");
+      const text = await generateTextFor(deps, llm, {
+        role: "fast",
+        purpose: "snapshot",
+        instructions: SNAPSHOT_INSTRUCTIONS,
+        prompt: `${wrapData("profile", fallback)}${notes ? `\n${wrapData("notes", notes)}` : ""}`,
+      });
+      if (text.trim()) content = text.trim();
+    });
+  } catch (e) {
+    log.warn({ userId, err: (e as Error).name }, "snapshot generation failed, storing fallback");
+  }
+  content = truncateToTokens(content, 2000);
+  await db
+    .insert(schema.userSnapshot)
+    .values({ userId, content, profileVersion, generatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: schema.userSnapshot.userId,
+      set: { content, profileVersion, generatedAt: new Date(), updatedAt: new Date() },
+    });
 }

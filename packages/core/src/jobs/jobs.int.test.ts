@@ -272,3 +272,26 @@ describe("maintenance tick", () => {
     ]);
   });
 });
+
+describe("maintenance.tick to snapshot.refresh", () => {
+  it("refreshes a stale snapshot through the real queues", async () => {
+    await createSkill(db, "u1", {
+      name: "Triage",
+      level: null,
+      evidence: null,
+      sourceType: "manual",
+      sourceId: null,
+    });
+    await registerJobs(boss, { ...testDeps(db), queue: pgBossQueue(boss) }, coreJobs);
+    expect(await boss.getQueue("snapshot.refresh")).toMatchObject({ policy: "stately" });
+    await boss.send("maintenance.tick", {});
+    await vi.waitFor(
+      async () => {
+        const [row] = await db.select().from(schema.userSnapshot);
+        expect(row?.userId).toBe("u1");
+      },
+      { timeout: 30_000, interval: 250 },
+    );
+    expect((await findMaintenanceWork(db)).snapshot).toEqual([]);
+  });
+});

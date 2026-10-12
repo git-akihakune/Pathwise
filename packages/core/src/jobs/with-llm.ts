@@ -1,6 +1,4 @@
-import { isAuthError } from "../llm/auth";
-import { resolveLlm } from "../llm/resolve";
-import type { Llm, LlmDeps } from "../llm/types";
+import { isAuthError, type Llm, type LlmDeps, resolveLlm } from "../llm";
 import { createLogger } from "../logger";
 
 const log = createLogger("jobs");

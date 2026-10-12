@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { generateStructured, type Llm, type LlmDeps, StructuredOutputError } from "../../llm";
-import { renderProfileFallback } from "../../memory/snapshot";
+import { getSnapshotText } from "../../memory/snapshot";
 import { listMemory } from "../../services/memory";
 import { type CareerPathInput, careerPathInputSchema } from "../../services/paths";
 import { getProfile } from "../../services/profile";
@@ -91,8 +91,7 @@ export async function generateCareerPaths(
     const g = (gaps.get(o.code) ?? []).map((x) => `${x.skill} (${x.importance.toFixed(2)})`);
     return `code: ${o.code} | ${o.title} (${o.source})\n${clip(o.description, 300)}${g.length > 0 ? `\ngaps: ${g.join(", ")}` : ""}`;
   };
-  // TODO(Task 10): switch to getSnapshotText once snapshots exist (R15).
-  const prompt = `${wrapData("profile", renderProfileFallback(profile, memories))}\n${wrapData("candidates", list.map(block).join("\n\n"))}`;
+  const prompt = `${wrapData("profile", await getSnapshotText(db, userId))}\n${wrapData("candidates", list.map(block).join("\n\n"))}`;
 
   const out = await generateStructured(deps, llm, {
     role: "main",

@@ -1,5 +1,8 @@
 import { z } from "zod";
+import { curateSession } from "../memory/curator";
 import { embedPending } from "../memory/embed";
+import { refreshSnapshot } from "../memory/snapshot";
+import { summarizeSession } from "../memory/summarize";
 import { JOBS } from "./queue";
 import type { AnyJobDefinition, JobDefinition } from "./register";
 import { findMaintenanceWork } from "./tick";
@@ -29,5 +32,41 @@ const memoryEmbed: JobDefinition<{ userId: string }> = {
   },
 };
 
-/** Task 10 (and Plan 5) append their definitions. */
-export const coreJobs: AnyJobDefinition[] = [maintenanceTick, memoryEmbed];
+const sessionPayload = z.object({ userId: z.string(), sessionId: z.string() });
+
+const sessionCurate: JobDefinition<z.infer<typeof sessionPayload>> = {
+  name: JOBS.sessionCurate,
+  schema: sessionPayload,
+  async handler(deps, { userId, sessionId }) {
+    await curateSession(deps, userId, sessionId);
+  },
+};
+
+const sessionSummarize: JobDefinition<z.infer<typeof sessionPayload>> = {
+  name: JOBS.sessionSummarize,
+  policy: "stately",
+  schema: sessionPayload,
+  async handler(deps, { userId, sessionId }) {
+    await withUserLlm(deps, userId, async (llm) => {
+      await summarizeSession(deps, llm, userId, sessionId, { keepLast: 4 });
+    });
+  },
+};
+
+const snapshotRefreshJob: JobDefinition<{ userId: string }> = {
+  name: JOBS.snapshotRefresh,
+  policy: "stately",
+  schema: z.object({ userId: z.string() }),
+  async handler(deps, { userId }) {
+    await refreshSnapshot(deps, userId);
+  },
+};
+
+/** Plan 5 appends its definitions. */
+export const coreJobs: AnyJobDefinition[] = [
+  maintenanceTick,
+  memoryEmbed,
+  sessionCurate,
+  sessionSummarize,
+  snapshotRefreshJob,
+];
