@@ -1,4 +1,12 @@
-import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -40,6 +48,16 @@ describe("ensureSecrets", () => {
     writeFileSync(join(dir, "APP_ENCRYPTION_KEY"), "truncated");
     await expect(ensureSecrets(dir, {})).rejects.toThrow(/refusing to overwrite/);
     expect(readFileSync(join(dir, "APP_ENCRYPTION_KEY"), "utf8")).toBe("truncated");
+  });
+  it("reports unreadable secret files as read errors, not invalid content", async () => {
+    const dir = fresh();
+    await ensureSecrets(dir, {});
+    rmSync(join(dir, "BETTER_AUTH_SECRET"));
+    mkdirSync(join(dir, "BETTER_AUTH_SECRET"));
+    const err = await ensureSecrets(dir, {}).catch((e: Error) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toMatch(/could not be read \(EISDIR\)/);
+    expect((err as Error).message).not.toMatch(/remove/);
   });
   it("refuses to overwrite an empty secret file", async () => {
     const dir = fresh();
