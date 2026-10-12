@@ -10,6 +10,7 @@ COPY packages/core/package.json packages/core/
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
+ENV NEXT_TELEMETRY_DISABLED=1
 COPY . .
 RUN pnpm --filter @pathwise/worker build && pnpm --filter @pathwise/web build
 
@@ -21,6 +22,6 @@ COPY docker/entrypoint.sh /app/entrypoint.sh
 COPY docker/pathwise /usr/local/bin/pathwise
 RUN mkdir -p /var/lib/pathwise/secrets /var/lib/pathwise/files \
     && chown -R node:node /var/lib/pathwise
-ENV NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3000
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=3000
 USER node
 ENTRYPOINT ["/app/entrypoint.sh"]
