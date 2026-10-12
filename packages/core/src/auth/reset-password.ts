@@ -8,7 +8,7 @@ import { normalizeEmail } from "../invites";
 /** Operator-only: sets a fresh random password on the user's credential account and returns it. */
 export async function resetPassword(db: Db, email: string): Promise<string> {
   const [row] = await db
-    .select({ accountId: schema.account.id })
+    .select({ accountId: schema.account.id, userId: schema.account.userId })
     .from(schema.account)
     .innerJoin(schema.user, eq(schema.user.id, schema.account.userId))
     .where(
@@ -23,5 +23,7 @@ export async function resetPassword(db: Db, email: string): Promise<string> {
     .update(schema.account)
     .set({ password: await hashPassword(password) })
     .where(eq(schema.account.id, row.accountId));
+  // A reset is usually a compromise response: end any sessions the old password created.
+  await db.delete(schema.session).where(eq(schema.session.userId, row.userId));
   return password;
 }
