@@ -66,7 +66,7 @@ const experienceBase = z.object({
   organization: text(200),
   ...dates,
   description: text(4000),
-  highlights: z.array(z.string().trim().min(1).max(4000)).max(20).default([]),
+  highlights: z.array(z.string().trim().min(1).max(4000)).max(20),
   ...provenance,
 });
 const educationBase = z.object({
@@ -76,7 +76,10 @@ const educationBase = z.object({
   ...dates,
   ...provenance,
 });
-export const experienceInputSchema = experienceBase.refine(rangeOk, RANGE_ISSUE);
+// Defaults belong only on the create schemas: .partial() keeps them and would overwrite stored values.
+export const experienceInputSchema = experienceBase
+  .extend({ highlights: experienceBase.shape.highlights.default([]) })
+  .refine(rangeOk, RANGE_ISSUE);
 export const educationInputSchema = educationBase.refine(rangeOk, RANGE_ISSUE);
 export const skillInputSchema = z.object({
   name: required("Enter a skill."),

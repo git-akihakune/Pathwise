@@ -57,6 +57,11 @@ describe("experiences", () => {
     expect(err).toBeInstanceOf(ZodError);
     expect(err.issues[0].message).toBe("End date is before start date.");
   });
+  it("keeps highlights when patching another field", async () => {
+    const e = await createExperience(db, "u1", { title: "A", highlights: ["Shipped X"] });
+    const updated = await updateExperience(db, "u1", e.id, { organization: "Acme" });
+    expect(updated.highlights).toEqual(["Shipped X"]);
+  });
   it("versions updates and rejects stale ones without side effects", async () => {
     const e = await createExperience(db, "u1", { title: "Analyst" });
     expect(e).toMatchObject({ version: 1, sourceType: "manual", highlights: [] });
