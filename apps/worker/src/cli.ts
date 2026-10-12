@@ -1,7 +1,8 @@
 import { resetPassword } from "@pathwise/core/auth";
 import { loadConfig } from "@pathwise/core/config";
+import { rotateEncryptionKey } from "@pathwise/core/crypto";
 import { createDb } from "@pathwise/core/db";
-import { NotFoundError } from "@pathwise/core/errors";
+import { ConfigError, NotFoundError } from "@pathwise/core/errors";
 import { HEARTBEAT_PATH, isHeartbeatFresh } from "./heartbeat";
 
 export interface CliIo {
@@ -13,6 +14,7 @@ const USAGE = `Usage: pathwise <command>
 
 Commands:
   admin reset-password <email>   Set a new random password for a user
+  admin rotate-encryption-key      Re-encrypt stored API keys with a new key
   healthcheck                    Exit 0 if the worker heartbeat is fresh`;
 
 const defaultIo: CliIo = {
@@ -31,6 +33,24 @@ export async function runCli(args: string[], io: CliIo = defaultIo): Promise<num
       return 0;
     } catch (e) {
       if (e instanceof NotFoundError) {
+        io.err(e.message);
+        return 1;
+      }
+      throw e;
+    } finally {
+      await pool.end();
+    }
+  }
+  if (a === "admin" && b === "rotate-encryption-key") {
+    const config = loadConfig();
+    const { db, pool } = createDb(config.databaseUrl);
+    try {
+      const { rotated } = await rotateEncryptionKey(db, config, process.env);
+      io.out(`Re-encrypted ${rotated} provider keys.`);
+      io.out("Restart web and worker to use the new key: docker compose restart web worker");
+      return 0;
+    } catch (e) {
+      if (e instanceof ConfigError) {
         io.err(e.message);
         return 1;
       }

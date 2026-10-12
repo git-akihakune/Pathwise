@@ -15,6 +15,8 @@ Open http://localhost:3000 and register. The first account becomes the admin.
 
 Configuration is optional. Copy `.env.example` to `.env` and uncomment what you need.
 
+Back up the `pathwise-secrets` volume with the database. Rotate the encryption key with `docker compose exec worker pathwise admin rotate-encryption-key`.
+
 ## Development
 
 ```bash
