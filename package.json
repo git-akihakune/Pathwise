@@ -17,7 +17,8 @@
     "dev:db": "docker compose -f compose.dev.yaml up -d --wait",
     "dev:init": "tsx --env-file=dev.env apps/worker/src/main.ts init",
     "dev:worker": "tsx watch --env-file=dev.env apps/worker/src/main.ts worker",
-    "dev": "pnpm dev:db && pnpm dev:init && pnpm run --parallel \"/^dev:(web|worker)$/\""
+    "dev:web": "pnpm --filter @pathwise/web dev",
+    "dev": "pnpm dev:db && pnpm dev:init && pnpm -w run --parallel \"/^dev:(web|worker)$/\""
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
