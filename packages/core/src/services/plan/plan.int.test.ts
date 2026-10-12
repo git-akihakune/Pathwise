@@ -201,3 +201,17 @@ describe("plans", () => {
     expect((await getActivePlan(db, "u1"))?.actions).toEqual([]);
   });
 });
+
+describe("impossible calendar dates", () => {
+  it("rejects them with a validation error instead of a database error", async () => {
+    await expect(
+      createPlan(db, "u1", {
+        ...empty("N"),
+        milestones: [{ title: "M", targetDate: "2026-02-30" }],
+      }),
+    ).rejects.toBeInstanceOf(ZodError);
+    await expect(
+      createPlan(db, "u1", { ...empty("N"), actions: [{ title: "A", weekOf: "2026-02-30" }] }),
+    ).rejects.toBeInstanceOf(ZodError);
+  });
+});

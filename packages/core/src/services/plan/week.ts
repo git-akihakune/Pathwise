@@ -12,3 +12,9 @@ export function weekStartOf(ymd: string): string {
   d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
   return d.toISOString().slice(0, 10);
 }
+
+/** A real calendar date in `YYYY-MM-DD` form (`Date.parse` alone rolls "2026-02-30" over to March). */
+export function isDate(s: string): boolean {
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}

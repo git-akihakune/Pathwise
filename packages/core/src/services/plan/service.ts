@@ -3,7 +3,7 @@ import { z } from "zod";
 import { type DbOrTx, schema } from "../../db";
 import { ConflictError, NotFoundError } from "../../errors";
 import { deleteOwned, updateVersioned } from "../versioned";
-import { weekStartOf } from "./week";
+import { isDate, weekStartOf } from "./week";
 
 export interface Milestone {
   id: string;
@@ -35,7 +35,6 @@ export interface ActivePlan {
   actions: Action[];
 }
 
-const isDate = (s: string) => !Number.isNaN(Date.parse(`${s}T00:00:00Z`));
 const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 // No defaults anywhere below: patch schemas derive from these (zod 4's partial() keeps defaults).
@@ -144,6 +143,13 @@ export async function getActivePlan(db: DbOrTx, userId: string): Promise<ActiveP
   return plan ? loadPlan(db, plan) : null;
 }
 
+/** Serializes creates per user, so racing creates never reach the one-active-plan index. Reentrant within a transaction. */
+export async function lockPlanCreation(tx: DbOrTx, userId: string): Promise<void> {
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${`pathwise.plan:${userId}`}, 0))`,
+  );
+}
+
 export async function createPlan(
   db: DbOrTx,
   userId: string,
@@ -151,10 +157,7 @@ export async function createPlan(
 ): Promise<ActivePlan> {
   const data = createPlanInputSchema.parse(input);
   return db.transaction(async (tx) => {
-    // Serializes creates per user, so racing creates never reach the one-active-plan index.
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtextextended(${`pathwise.plan:${userId}`}, 0))`,
-    );
+    await lockPlanCreation(tx, userId);
     if (data.careerPathId) {
       await updateVersioned(tx, schema.careerPaths, userId, data.careerPathId, {
         status: "chosen",
@@ -220,11 +223,11 @@ async function lockEditablePlan(db: DbOrTx, userId: string, planId: string) {
   return plan;
 }
 
-async function bumpPlan(db: DbOrTx, planId: string): Promise<void> {
+async function bumpPlan(db: DbOrTx, userId: string, planId: string): Promise<void> {
   await db
     .update(schema.plans)
     .set({ version: sql`${schema.plans.version} + 1`, updatedAt: sql`now()` })
-    .where(eq(schema.plans.id, planId));
+    .where(and(eq(schema.plans.id, planId), eq(schema.plans.userId, userId)));
 }
 
 /** Runs a structural edit of one plan's contents and bumps `plans.version` afterwards. */
@@ -237,7 +240,7 @@ function editPlan<T>(
   return db.transaction(async (tx) => {
     await lockEditablePlan(tx, userId, planId);
     const result = await edit(tx);
-    await bumpPlan(tx, planId);
+    await bumpPlan(tx, userId, planId);
     return result;
   });
 }

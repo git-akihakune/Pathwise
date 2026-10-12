@@ -75,3 +75,7 @@ it("isolates users", async () => {
   await deleteStory(db, "u1", s.id);
   expect(await listStories(db, "u1")).toEqual([]);
 });
+
+it("treats a malformed id as not found", async () => {
+  await expect(getStory(db, "u1", "not-a-uuid")).rejects.toBeInstanceOf(NotFoundError);
+});

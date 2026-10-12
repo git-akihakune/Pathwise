@@ -2,13 +2,14 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import { type DbOrTx, schema } from "../../db";
 import { ConflictError, NotFoundError } from "../../errors";
-import { addMemory, updateMemory } from "../memory";
+import { addMemory, setMemoryStatus, updateMemory } from "../memory";
 import { savePath } from "../paths";
 import {
   addAction,
   addMilestone,
   createPlan,
   getActivePlan,
+  lockPlanCreation,
   removeAction,
   removeMilestone,
   setActionStatus,
@@ -102,6 +103,22 @@ async function readVersion(
   return row.version;
 }
 
+async function memoryStatus(
+  db: DbOrTx,
+  userId: string,
+  id: string,
+  lock: boolean,
+): Promise<string> {
+  const m = schema.memoryItems;
+  const query = db
+    .select({ status: m.status })
+    .from(m)
+    .where(and(eq(m.id, id), eq(m.userId, userId)));
+  const [row] = await (lock ? query.for("update") : query);
+  if (!row) throw new NotFoundError("Not found.");
+  return row.status;
+}
+
 export async function createProposal<K extends ProposalKind>(
   db: DbOrTx,
   userId: string,
@@ -112,6 +129,12 @@ export async function createProposal<K extends ProposalKind>(
   const row = targetTable(input.kind, payload);
   if (row) {
     target = { id: row.id, version: await readVersion(db, userId, row, false) };
+    if (input.kind === "memory_update") {
+      const status = await memoryStatus(db, userId, row.id, false);
+      if (status !== "active" && status !== "pending") {
+        throw new ConflictError("That item is no longer active.");
+      }
+    }
   } else if (input.kind === "plan_create" || input.kind === "plan_change") {
     const plan = await getActivePlan(db, userId);
     if (plan) target = { id: plan.id, version: plan.version };
@@ -224,6 +247,19 @@ function assertSameTarget(kind: ProposalKind, stored: unknown, edited: unknown):
   if (!same) throw new ConflictError(CHANGED_TARGET);
 }
 
+/** An edit can't refresh a staleness check: each update keeps the version it was proposed against. */
+function pinStoredVersions(stored: unknown, edited: unknown): void {
+  const versions = new Map(
+    (stored as ProposalPayloads["action_status_update"]).updates.map((u) => [
+      u.actionId,
+      u.basedOnVersion,
+    ]),
+  );
+  for (const u of (edited as ProposalPayloads["action_status_update"]).updates) {
+    u.basedOnVersion = versions.get(u.actionId) ?? u.basedOnVersion;
+  }
+}
+
 async function apply(tx: DbOrTx, userId: string, proposal: Row, payload: unknown): Promise<void> {
   const kind = proposal.kind as ProposalKind;
   const provenance = { sourceType: "message", sourceId: proposal.messageId } as const;
@@ -266,7 +302,13 @@ async function apply(tx: DbOrTx, userId: string, proposal: Row, payload: unknown
       return;
     case "memory_update": {
       const { id, ...patch } = payload as ProposalPayloads["memory_update"];
+      const status = await memoryStatus(tx, userId, id, true);
+      if (status !== "active" && status !== "pending") {
+        throw new ConflictError("That item is no longer active.");
+      }
       await updateMemory(tx, userId, id, patch);
+      // Facts approved through a proposal are always active (spec §5.6).
+      if (status === "pending") await setMemoryStatus(tx, userId, id, "active");
       return;
     }
     case "story_add":
@@ -284,6 +326,8 @@ async function apply(tx: DbOrTx, userId: string, proposal: Row, payload: unknown
       await savePath(tx, userId, payload as ProposalPayloads["path_save"]);
       return;
     case "plan_create": {
+      // Same lock createPlan takes, so a concurrent manual create can't slip in after the check.
+      await lockPlanCreation(tx, userId);
       const active = await getActivePlan(tx, userId);
       if (
         (active?.id ?? null) !== proposal.targetId ||
@@ -347,6 +391,7 @@ export async function approveProposal(
     if (opts.editedPayload !== undefined) {
       payload = proposalPayloadSchemas[kind].parse(opts.editedPayload);
       assertSameTarget(kind, proposal.payload, payload);
+      if (kind === "action_status_update") pinStoredVersions(proposal.payload, payload);
     }
     try {
       await tx.transaction((savepoint) => apply(savepoint, userId, proposal, payload));

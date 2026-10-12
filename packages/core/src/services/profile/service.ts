@@ -2,6 +2,7 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { type DbOrTx, schema } from "../../db";
 import { matchTaxonomySkill } from "../../taxonomy";
+import { isDate } from "../plan/week";
 import { deleteOwned, updateVersioned } from "../versioned";
 import { bumpProfileVersion } from "./version";
 
@@ -49,6 +50,7 @@ const required = (message: string) => z.string().trim().min(1, message).max(200)
 const partialDate = z
   .string()
   .regex(/^\d{4}(-(0[1-9]|1[0-2])(-(0[1-9]|[12]\d|3[01]))?)?$/, "Use YYYY, YYYY-MM or YYYY-MM-DD.")
+  .refine((s) => s.length < 10 || isDate(s), "Use YYYY, YYYY-MM or YYYY-MM-DD.")
   .nullish();
 const provenance = {
   sourceType: z.enum(SOURCES).default("manual"),

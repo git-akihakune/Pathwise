@@ -332,3 +332,82 @@ describe("plan_change locks the plan before comparing", () => {
     expect((await getActivePlan(db, "u1"))?.milestones.map((m) => m.title)).toEqual(["Manual"]);
   });
 });
+
+describe("final review fixes", () => {
+  const memInput = (over = {}) => ({
+    category: "value" as const,
+    content: "Old",
+    sourceType: "manual" as const,
+    sourceId: null,
+    confidence: 1,
+    sensitive: false,
+    status: "active" as const,
+    ...over,
+  });
+
+  it("plan_create waits for a concurrent manual createPlan and then conflicts", async () => {
+    const proposal = await createProposal(db, "u1", {
+      kind: "plan_create",
+      payload: { northStar: "Proposed", milestones: [], actions: [] },
+    });
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    let created: () => void = () => {};
+    const manualCreated = new Promise<void>((r) => {
+      created = r;
+    });
+    const manual = db.transaction(async (tx) => {
+      await createPlan(tx, "u1", { northStar: "Manual", milestones: [], actions: [] });
+      created();
+      await gate;
+    });
+    await manualCreated;
+    const approval = approveProposal(db, "u1", proposal.id);
+    await new Promise((r) => setTimeout(r, 300));
+    release();
+    await manual;
+    expect(await approval).toEqual({ status: "conflicted" });
+    expect((await getActivePlan(db, "u1"))?.northStar).toBe("Manual");
+  });
+
+  it("an edit cannot refresh an action's basedOnVersion to bypass staleness", async () => {
+    const plan = await createPlan(db, "u1", {
+      northStar: "N",
+      milestones: [],
+      actions: [{ title: "A", weekOf: "2026-10-12" }],
+    });
+    const act = plan.actions[0];
+    const p = await createProposal(db, "u1", {
+      kind: "action_status_update",
+      payload: { updates: [{ actionId: act?.id ?? "", status: "done", basedOnVersion: 1 }] },
+    });
+    await setActionStatus(db, "u1", act?.id ?? "", "skipped", 1);
+    const result = await approveProposal(db, "u1", p.id, {
+      editedPayload: {
+        updates: [{ actionId: act?.id ?? "", status: "done", basedOnVersion: 2 }],
+      },
+    });
+    expect(result).toEqual({ status: "conflicted" });
+    expect((await getActivePlan(db, "u1"))?.actions[0]?.status).toBe("skipped");
+  });
+
+  it("rejects memory_update on a superseded or rejected item", async () => {
+    const old = await addMemory(db, "u1", memInput());
+    await addMemory(db, "u1", memInput({ content: "New", supersedesId: old.id }));
+    await expect(
+      createProposal(db, "u1", { kind: "memory_update", payload: { id: old.id, content: "X" } }),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("approving memory_update on a pending item activates it", async () => {
+    const pending = await addMemory(db, "u1", memInput({ status: "pending" }));
+    const p = await createProposal(db, "u1", {
+      kind: "memory_update",
+      payload: { id: pending.id, content: "Confirmed" },
+    });
+    await approveProposal(db, "u1", p.id);
+    expect(await listMemory(db, "u1")).toMatchObject([{ content: "Confirmed", status: "active" }]);
+  });
+});

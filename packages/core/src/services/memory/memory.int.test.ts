@@ -140,6 +140,44 @@ describe("memory", () => {
     expect(await pv()).toBe(2);
   });
 
+  describe("superseding", () => {
+    it("supersedes immediately when the replacement is active, and bumps the profile version", async () => {
+      const old = await mem("Old");
+      const before = await pv();
+      const next = await mem("New", { supersedesId: old.id });
+      expect((await row(old.id))?.status).toBe("superseded");
+      expect(next.supersedesId).toBe(old.id);
+      expect(await pv()).toBeGreaterThan(before);
+    });
+
+    it("keeps the old item active until a pending replacement is confirmed", async () => {
+      const old = await mem("Old");
+      const next = await mem("New", { supersedesId: old.id, status: "pending" });
+      expect((await row(old.id))?.status).toBe("active");
+      const before = await pv();
+      await setMemoryStatus(db, "u1", next.id, "active");
+      expect((await row(old.id))?.status).toBe("superseded");
+      expect((await row(next.id))?.status).toBe("active");
+      expect(await pv()).toBeGreaterThan(before);
+    });
+
+    it("leaves the old item active when a pending replacement is dismissed", async () => {
+      const old = await mem("Old");
+      const next = await mem("New", { supersedesId: old.id, status: "pending" });
+      await setMemoryStatus(db, "u1", next.id, "rejected");
+      expect((await row(old.id))?.status).toBe("active");
+      expect((await row(next.id))?.status).toBe("rejected");
+    });
+
+    it("confirms a pending replacement even if the old item is no longer active", async () => {
+      const old = await mem("Old");
+      const next = await mem("New", { supersedesId: old.id, status: "pending" });
+      await deleteMemory(db, "u1", old.id);
+      await setMemoryStatus(db, "u1", next.id, "active");
+      expect((await row(next.id))?.status).toBe("active");
+    });
+  });
+
   it("exposes the Profile categories", () => {
     expect(PROFILE_MEMORY_CATEGORIES).toEqual([
       "value",

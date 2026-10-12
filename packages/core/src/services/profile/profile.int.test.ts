@@ -45,6 +45,7 @@ describe("experiences", () => {
   it.each([
     [{ title: "" }, "Enter a title."],
     [{ title: "X", startDate: "2019-13" }, "Use YYYY, YYYY-MM or YYYY-MM-DD."],
+    [{ title: "X", startDate: "2019-02-30" }, "Use YYYY, YYYY-MM or YYYY-MM-DD."],
     [{ title: "X", startDate: "2020", endDate: "2019-05" }, "End date is before start date."],
   ])("rejects %o", async (input, message) => {
     const err = await createExperience(db, "u1", input).catch((e) => e);

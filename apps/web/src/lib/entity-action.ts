@@ -10,7 +10,7 @@ export const field = (fd: FormData, name: string): string | null => {
   const v = fd.get(name);
   return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
 };
-const version = (fd: FormData) => {
+export const version = (fd: FormData) => {
   const v = field(fd, "version");
   return v === null ? undefined : Number(v);
 };

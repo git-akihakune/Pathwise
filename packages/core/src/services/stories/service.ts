@@ -72,6 +72,7 @@ export async function listStories(db: DbOrTx, userId: string): Promise<Story[]> 
 
 export async function getStory(db: DbOrTx, userId: string, id: string): Promise<Story> {
   const s = schema.stories;
+  if (!z.string().uuid().safeParse(id).success) throw new NotFoundError("Not found.");
   const [row] = await db
     .select()
     .from(s)

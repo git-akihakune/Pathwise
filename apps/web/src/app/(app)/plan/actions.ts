@@ -5,6 +5,7 @@ import {
   addAction,
   addMilestone,
   createPlan,
+  isDate,
   removeAction,
   removeMilestone,
   setActionStatus,
@@ -13,19 +14,15 @@ import {
   updatePlan,
   weekStartOf,
 } from "@pathwise/core/services/plan";
-import { type FormState, field, removeEntity, runForm } from "@/lib/entity-action";
+import { type FormState, field, removeEntity, runForm, version } from "@/lib/entity-action";
 import { getServer } from "@/lib/server";
 
 const PATH = "/plan";
-const version = (fd: FormData) => {
-  const v = field(fd, "version");
-  return v === null ? undefined : Number(v);
-};
 const idOf = (fd: FormData) => field(fd, "id") ?? "";
 
 /** Snaps a "Week of" date to its Monday; anything unparseable is left for core to reject. */
 function normalizeWeek(s: string | null): string {
-  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s) || Number.isNaN(Date.parse(`${s}T00:00:00Z`))) {
+  if (!s || !isDate(s)) {
     return s ?? "";
   }
   return weekStartOf(s);

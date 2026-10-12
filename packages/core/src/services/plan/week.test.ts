@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mondayOf, weekStartOf } from "./week";
+import { isDate, mondayOf, weekStartOf } from "./week";
 
 describe("mondayOf (Review Focus 2)", () => {
   it.each([
@@ -23,5 +23,18 @@ describe("weekStartOf", () => {
     ["2027-01-01", "2026-12-28"],
   ])("weekStartOf(%s) = %s", (d, expected) => {
     expect(weekStartOf(d)).toBe(expected);
+  });
+});
+
+describe("isDate", () => {
+  it.each([
+    ["2026-02-28", true],
+    ["2028-02-29", true],
+    ["2026-02-30", false],
+    ["2026-04-31", false],
+    ["2026-13-01", false],
+    ["2026-02-32", false],
+  ])("%s -> %s", (s, ok) => {
+    expect(isDate(s)).toBe(ok);
   });
 });

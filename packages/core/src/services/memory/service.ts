@@ -108,13 +108,16 @@ export async function addMemory(
     if (supersedesId) {
       const old = await lockOwned(tx, userId, supersedesId);
       if (old.status !== "active") throw new ConflictError("That item is no longer active.");
-      await updateVersioned(tx, schema.memoryItems, userId, old.id, { status: "superseded" });
+      // A pending replacement supersedes only once it is confirmed (see setMemoryStatus).
+      if (values.status === "active") {
+        await updateVersioned(tx, schema.memoryItems, userId, old.id, { status: "superseded" });
+      }
     }
     const [row] = await tx
       .insert(schema.memoryItems)
       .values({ ...values, supersedesId: supersedesId ?? null, userId })
       .returning();
-    if (values.status === "active" || supersedesId) await bumpProfileVersion(tx, userId);
+    if (values.status === "active") await bumpProfileVersion(tx, userId);
     return toItem(row as MemoryRow);
   });
 }
@@ -154,7 +157,18 @@ export async function setMemoryStatus(
       throw new ConflictError("Only pending items can be confirmed or dismissed.");
     }
     await updateVersioned(tx, schema.memoryItems, userId, id, { status });
-    if (status === "active") await bumpProfileVersion(tx, userId);
+    if (status === "active") {
+      if (row.supersedesId) {
+        const old = await lockOwned(tx, userId, row.supersedesId).catch((e) => {
+          if (e instanceof NotFoundError) return null;
+          throw e;
+        });
+        if (old?.status === "active") {
+          await updateVersioned(tx, schema.memoryItems, userId, old.id, { status: "superseded" });
+        }
+      }
+      await bumpProfileVersion(tx, userId);
+    }
   });
 }
 
