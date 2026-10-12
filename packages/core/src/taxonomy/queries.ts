@@ -32,7 +32,7 @@ export async function searchOccupations(
     select id, source, code, title, description
     from occupations, websearch_to_tsquery('english', ${q}) as tsq
     where search @@ tsq ${sourceFilter}
-    order by ts_rank(search, tsq) desc, title asc
+    order by (to_tsvector('english', title) @@ tsq) desc, ts_rank(search, tsq) desc, title asc
     limit ${limit}`);
   return rows;
 }

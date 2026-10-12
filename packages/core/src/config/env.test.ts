@@ -22,7 +22,13 @@ describe("loadBaseConfig", () => {
       logContent: false,
       otelEndpoint: null,
       llmMode: "live",
+      taxonomyDir: "/app/data/taxonomy",
     });
+  });
+  it("reads TAXONOMY_DIR", () => {
+    expect(loadBaseConfig({ ...DB, TAXONOMY_DIR: "./data/taxonomy" }).taxonomyDir).toBe(
+      "./data/taxonomy",
+    );
   });
   it("reads LLM_MODE", () => {
     expect(loadBaseConfig({ ...DB, LLM_MODE: "mock" }).llmMode).toBe("mock");

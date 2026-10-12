@@ -26,6 +26,7 @@ export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     logContent: false,
     otelEndpoint: null,
     llmMode: "live",
+    taxonomyDir: "/app/data/taxonomy",
     appEncryptionKey: Buffer.alloc(32, 1),
     betterAuthSecret: "test-secret",
     ...overrides,

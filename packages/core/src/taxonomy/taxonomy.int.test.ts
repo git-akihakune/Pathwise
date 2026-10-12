@@ -108,6 +108,13 @@ describe("queries", () => {
       "onet:29-1141.00",
     ]);
   });
+  it("ranks an occupation whose title has every query term first", async () => {
+    await db.execute(sql`
+      insert into occupations (id, source, code, title, description, alt_titles)
+      values ('onet:29-1141.03', 'onet', '29-1141.03', 'Critical Care Nurses', 'Nursing care.',
+              array['Registered Nurse', 'Registered Nurse, Intensive Care', 'Critical Care Registered Nurse'])`);
+    expect((await searchOccupations(db, "registered nurse"))[0]?.id).toBe("onet:29-1141.00");
+  });
   it("returns nothing for blank input and tolerates operator characters", async () => {
     expect(await searchOccupations(db, "   ")).toEqual([]);
     await expect(searchOccupations(db, 'nurse & | ! "')).resolves.toBeInstanceOf(Array);

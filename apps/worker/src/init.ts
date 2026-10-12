@@ -2,10 +2,12 @@ import { ensureSecrets, loadBaseConfig, type SecretName } from "@pathwise/core/c
 import { createDb, runMigrations } from "@pathwise/core/db";
 import { ensureInstanceSettings } from "@pathwise/core/instance";
 import { createLogger } from "@pathwise/core/logger";
+import { importTaxonomySnapshot } from "@pathwise/core/taxonomy";
 import { PgBoss } from "pg-boss";
 
 export interface InitReport {
   generatedSecrets: SecretName[];
+  taxonomy: { imported: boolean; version: string };
 }
 
 /** Idempotent setup: secrets, migrations, instance settings, pg-boss schema. */
@@ -18,12 +20,18 @@ export async function runInit(
   const { generated } = await ensureSecrets(config.secretsDir, env);
   log.info({ generated }, "secrets ready");
 
+  let taxonomy: InitReport["taxonomy"];
   const { db, pool } = createDb(config.databaseUrl);
   try {
     await runMigrations(db, opts.migrationsFolder);
     log.info("migrations applied");
     await ensureInstanceSettings(db);
     log.info("instance settings ready");
+    taxonomy = await importTaxonomySnapshot(db, config.taxonomyDir);
+    log.info(
+      { version: taxonomy.version },
+      taxonomy.imported ? "taxonomy imported" : "taxonomy up to date",
+    );
   } finally {
     await pool.end();
   }
@@ -33,5 +41,5 @@ export async function runInit(
   await boss.start();
   await boss.stop();
   log.info("pg-boss schema ready");
-  return { generatedSecrets: generated };
+  return { generatedSecrets: generated, taxonomy };
 }
