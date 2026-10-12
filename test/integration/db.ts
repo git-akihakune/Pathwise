@@ -13,6 +13,8 @@ export const MIGRATIONS_FOLDER = fileURLToPath(
   new URL("../../packages/core/drizzle", import.meta.url),
 );
 
+export const TAXONOMY_FIXTURE_DIR = fileURLToPath(new URL("../fixtures/taxonomy", import.meta.url));
+
 let shared: Db | undefined;
 
 /** One shared Db per test file (module instances are isolated per file). */

@@ -1,0 +1,32 @@
+{
+  "format": 1,
+  "version": "custom-286f7e1d",
+  "builtAt": "2026-10-12T21:19:51.414Z",
+  "sources": {
+    "onet": null,
+    "esco": null,
+    "crosswalk": null
+  },
+  "files": {
+    "occupations.jsonl.gz": {
+      "sha256": "5448a67c6a0fde7462f8877674a6ad73ea64b7902e8dad269aebd39d5939f4ef",
+      "bytes": 588,
+      "rows": 5
+    },
+    "skills.jsonl.gz": {
+      "sha256": "57b2421dcba5e871293e932ebdf0e57dc2e8ce32981d6a202296146e6de31d73",
+      "bytes": 463,
+      "rows": 8
+    },
+    "occupation_skills.jsonl.gz": {
+      "sha256": "1aa4a753db8a084e90a915cc4d3570551847118f45d3a5906796bbe1ccde7573",
+      "bytes": 231,
+      "rows": 13
+    },
+    "relations.jsonl.gz": {
+      "sha256": "0fc8df0c14b59655c1bc7fce14d0ff3401c3fbe94c8f95b354661f2b781622d5",
+      "bytes": 140,
+      "rows": 4
+    }
+  }
+}

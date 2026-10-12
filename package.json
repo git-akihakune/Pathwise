@@ -9,6 +9,7 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "lint": "biome check .",
+    "taxonomy:fixture": "tsx test/fixtures/taxonomy/generate.ts",
     "format": "biome check --write .",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run --project unit",

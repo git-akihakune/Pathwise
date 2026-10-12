@@ -22,6 +22,20 @@
       "when": 1791836719031,
       "tag": "0002_complex_pestilence",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791839905683,
+      "tag": "0003_pgvector",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791839917851,
+      "tag": "0004_tearful_loners",
+      "breakpoints": true
     }
   ]
 }

@@ -14,3 +14,7 @@ export function createDb(
   });
   return { db: drizzle({ client: pool, schema }), pool };
 }
+
+export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+/** A database handle or an open transaction. */
+export type DbOrTx = Db | Tx;

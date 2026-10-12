@@ -15,7 +15,9 @@
       "!.devcontainer",
       "!.claude-data",
       "!.superpowers",
-      "!docs"
+      "!docs",
+      "!data/taxonomy",
+      "!test/fixtures/taxonomy/manifest.json"
     ]
   },
   "css": { "parser": { "tailwindDirectives": true } },
