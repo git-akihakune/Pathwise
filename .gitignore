@@ -10,3 +10,6 @@ playwright-report/
 .pnpm-store/
 next-env.d.ts
 *.tsbuildinfo
+.env
+.env.*
+!.env.example
