@@ -17,7 +17,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
+    "@testcontainers/postgresql": "^12.2.0",
     "@types/node": "^24.0.0",
+    "drizzle-orm": "^0.45.4",
     "typescript": "~6.0.3",
     "vitest": "^5.0.4"
   }
