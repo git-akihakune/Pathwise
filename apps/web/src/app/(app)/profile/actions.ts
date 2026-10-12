@@ -22,48 +22,17 @@ import {
 } from "@pathwise/core/services/profile";
 import { searchTaxonomySkills } from "@pathwise/core/taxonomy";
 import { revalidatePath } from "next/cache";
-import { GONE_MESSAGE, toFormError } from "@/lib/form-error";
+import { type FormState, field, removeEntity, saveEntity } from "@/lib/entity-action";
 import { getServer } from "@/lib/server";
 import { requireSession } from "@/lib/session";
 
-export type FormState = { error?: string } | undefined;
-
-/** An empty field means "no value": null clears a stored field on update. */
-const field = (fd: FormData, name: string): string | null => {
-  const v = fd.get(name);
-  return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
-};
-const version = (fd: FormData) => {
-  const v = field(fd, "version");
-  return v === null ? undefined : Number(v);
-};
-
-/** Runs a save: creates, or updates when the form carries a hidden id. */
-async function save(
+const save = (
   fd: FormData,
   create: (userId: string) => Promise<unknown>,
   update: (userId: string, id: string, expectedVersion?: number) => Promise<unknown>,
-): Promise<FormState> {
-  const { userId } = await requireSession();
-  const id = field(fd, "id");
-  try {
-    await (id ? update(userId, id, version(fd)) : create(userId));
-  } catch (e) {
-    return e instanceof NotFoundError ? { error: GONE_MESSAGE } : toFormError(e);
-  }
-  revalidatePath("/profile");
-}
-
-/** Deleting something already gone is a success. */
-async function remove(fd: FormData, del: (userId: string, id: string) => Promise<void>) {
-  const { userId } = await requireSession();
-  try {
-    await del(userId, field(fd, "id") ?? "");
-  } catch (e) {
-    if (!(e instanceof NotFoundError)) throw e;
-  }
-  revalidatePath("/profile");
-}
+) => saveEntity("/profile", fd, create, update);
+const remove = (fd: FormData, del: (userId: string, id: string) => Promise<void>) =>
+  removeEntity("/profile", fd, del);
 
 const experienceFields = (fd: FormData) => ({
   title: field(fd, "title") ?? "",

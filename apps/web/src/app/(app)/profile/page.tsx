@@ -1,11 +1,11 @@
 import { listMemory, PROFILE_MEMORY_CATEGORIES } from "@pathwise/core/services/memory";
 import { getProfile } from "@pathwise/core/services/profile";
 import { connection } from "next/server";
+import { OpenFormProvider } from "@/components/entity-form";
 import { PendingMemoryList } from "@/components/pending-memory-list";
 import { getServer } from "@/lib/server";
 import { requireSession } from "@/lib/session";
 import { EducationSection } from "./education-section";
-import { OpenFormProvider } from "./entity-form";
 import { ExperienceSection } from "./experience-section";
 import { MemorySection } from "./memory-section";
 import { SkillsSection } from "./skills-section";

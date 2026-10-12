@@ -2,11 +2,11 @@
 
 import type { Education } from "@pathwise/core/services/profile";
 import { ConfirmDelete } from "@/components/confirm-delete";
+import { EntityForm, Field, useOpenForm } from "@/components/entity-form";
 import { SourceLabel } from "@/components/source-label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { deleteEducationAction, saveEducationAction } from "./actions";
-import { EntityForm, Field, useOpenForm } from "./entity-form";
 
 function EducationForm({ item, onDone }: { item?: Education; onDone: () => void }) {
   return (

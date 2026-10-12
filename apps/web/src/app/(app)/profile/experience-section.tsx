@@ -2,12 +2,12 @@
 
 import type { Experience } from "@pathwise/core/services/profile";
 import { ConfirmDelete } from "@/components/confirm-delete";
+import { EntityForm, Field, useOpenForm } from "@/components/entity-form";
 import { SourceLabel } from "@/components/source-label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { deleteExperienceAction, saveExperienceAction } from "./actions";
-import { EntityForm, Field, useOpenForm } from "./entity-form";
 
 function ExperienceForm({ item, onDone }: { item?: Experience; onDone: () => void }) {
   return (

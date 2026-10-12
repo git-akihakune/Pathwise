@@ -4,7 +4,7 @@ import { createContext, type ReactNode, useActionState, useContext, useState } f
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import type { FormState } from "./actions";
+import type { FormState } from "@/lib/entity-action";
 
 const OpenFormContext = createContext<{ open: string | null; setOpen: (k: string | null) => void }>(
   { open: null, setOpen: () => {} },
@@ -35,16 +35,21 @@ export function EntityForm({
   action,
   entity,
   onDone,
+  submitLabel = "Save",
+  cancel,
   children,
 }: {
   action: (prev: FormState, fd: FormData) => Promise<FormState>;
   entity?: { id: string; version: number };
-  onDone: () => void;
+  onDone?: () => void;
+  /** Replaces the Cancel button, e.g. with a link when the form is a page. */
+  cancel?: ReactNode;
+  submitLabel?: string;
   children: ReactNode;
 }) {
   const [state, submit, pending] = useActionState<FormState, FormData>(async (prev, fd) => {
     const result = await action(prev, fd);
-    if (!result?.error) onDone();
+    if (!result?.error) onDone?.();
     return result;
   }, undefined);
   return (
@@ -59,11 +64,13 @@ export function EntityForm({
       {state?.error && <Alert variant="destructive">{state.error}</Alert>}
       <div className="flex gap-2">
         <Button type="submit" disabled={pending}>
-          Save
+          {submitLabel}
         </Button>
-        <Button type="button" variant="outline" onClick={onDone}>
-          Cancel
-        </Button>
+        {cancel ?? (
+          <Button type="button" variant="outline" onClick={onDone}>
+            Cancel
+          </Button>
+        )}
       </div>
     </form>
   );

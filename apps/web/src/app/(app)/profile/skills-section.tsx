@@ -2,12 +2,12 @@
 
 import type { Skill } from "@pathwise/core/services/profile";
 import { ConfirmDelete } from "@/components/confirm-delete";
+import { EntityForm, Field, useOpenForm } from "@/components/entity-form";
 import { SourceLabel } from "@/components/source-label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { deleteSkillAction, saveSkillAction } from "./actions";
-import { EntityForm, Field, useOpenForm } from "./entity-form";
 import { SkillPicker } from "./skill-picker";
 
 const LEVELS = {

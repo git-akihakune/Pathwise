@@ -2,12 +2,12 @@
 
 import type { MemoryCategory, MemoryItem } from "@pathwise/core/services/memory";
 import { ConfirmDelete } from "@/components/confirm-delete";
+import { EntityForm, Field, useOpenForm } from "@/components/entity-form";
 import { SourceLabel } from "@/components/source-label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { deleteMemoryAction, saveMemoryAction } from "./actions";
-import { EntityForm, Field, useOpenForm } from "./entity-form";
 
 const GROUPS: [MemoryCategory, string][] = [
   ["value", "Values"],
