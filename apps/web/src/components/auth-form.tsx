@@ -12,9 +12,11 @@ type Props = {
   submitLabel: string;
   withName?: boolean;
   inviteToken?: string;
+  /** Pre-filled, read-only email (invitation sign-up). */
+  fixedEmail?: string;
 };
 
-export function AuthForm({ action, submitLabel, withName, inviteToken }: Props) {
+export function AuthForm({ action, submitLabel, withName, inviteToken, fixedEmail }: Props) {
   const [state, formAction, pending] = useActionState(action, undefined);
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -37,7 +39,8 @@ export function AuthForm({ action, submitLabel, withName, inviteToken }: Props) 
           name="email"
           type="email"
           autoComplete="email"
-          defaultValue={state?.values?.email}
+          defaultValue={fixedEmail ?? state?.values?.email}
+          readOnly={fixedEmail !== undefined}
           required
         />
       </div>
