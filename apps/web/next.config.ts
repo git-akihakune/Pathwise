@@ -17,7 +17,15 @@ const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: repoRoot,
   transpilePackages: ["@pathwise/core"],
-  serverExternalPackages: ["pg", "pg-boss", "unpdf", "mammoth"],
+  serverExternalPackages: [
+    "pg",
+    "pg-boss",
+    "unpdf",
+    "mammoth",
+    "nodemailer",
+    "@react-email/components",
+    "@react-email/render",
+  ],
   agentRules: false,
 };
 

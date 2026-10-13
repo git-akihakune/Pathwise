@@ -82,6 +82,7 @@ async function turn(
   extra: Partial<TurnInput> = {},
   capabilities: Partial<Capabilities> = {},
 ) {
+  // biome-ignore lint/correctness/useHookAtTopLevel: not a React hook (name only matches use*)
   useLlm(models, capabilities);
   const queue = fakeQueue();
   let result: TurnResult | undefined;

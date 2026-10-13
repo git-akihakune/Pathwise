@@ -22,6 +22,7 @@ import type {
   ProviderModels,
   ProviderStatus,
 } from "../../packages/core/src/llm/types";
+import type { Mailer, MailMessage } from "../../packages/core/src/mail/mailer";
 import { activateProviderConfig } from "../../packages/core/src/services/providers";
 import type { WorkflowDeps } from "../../packages/core/src/workflows/types";
 
@@ -119,6 +120,18 @@ export function fakeQueue(): JobQueue & {
     sent,
     async send(name, data, opts) {
       sent.push(opts ? { name, data, opts } : { name, data });
+    },
+  };
+}
+
+export function fakeMailer(enabled = true): Mailer & { sent: MailMessage[] } {
+  const sent: MailMessage[] = [];
+  return {
+    enabled,
+    sent,
+    async send(msg) {
+      if (!enabled) throw new Error("Email is not configured.");
+      sent.push(msg);
     },
   };
 }

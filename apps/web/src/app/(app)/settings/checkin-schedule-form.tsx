@@ -79,7 +79,11 @@ export function CheckinScheduleForm({
           Save check-in schedule
         </Button>
         {state?.saved && (
-          <span className="text-sm text-muted-foreground">Check-in schedule saved.</span>
+          <span className="text-sm text-muted-foreground">
+            {state.invited
+              ? "Check-in schedule saved. We emailed you a calendar invite."
+              : "Check-in schedule saved."}
+          </span>
         )}
       </div>
     </form>
