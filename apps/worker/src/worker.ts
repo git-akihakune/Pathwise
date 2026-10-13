@@ -5,7 +5,10 @@ import { createLogger } from "@pathwise/core/logger";
 import { PgBoss } from "pg-boss";
 import { HEARTBEAT_PATH, startHeartbeat } from "./heartbeat";
 
-export async function startWorker(config: AppConfig): Promise<void> {
+export async function startWorker(
+  config: AppConfig,
+  options: { stopTracing?: (() => Promise<void>) | null } = {},
+): Promise<void> {
   const log = createLogger("worker");
   const boss = new PgBoss(config.databaseUrl);
   boss.on("error", (err) => log.error({ err }, "pg-boss error"));
@@ -20,6 +23,7 @@ export async function startWorker(config: AppConfig): Promise<void> {
     boss
       .stop({ graceful: true })
       .then(() => pool.end())
+      .then(() => options.stopTracing?.())
       .then(() => process.exit(0))
       .catch((err) => {
         log.error({ err }, "shutdown failed");

@@ -25,6 +25,8 @@ const nextConfig: NextConfig = {
     "nodemailer",
     "@react-email/components",
     "@react-email/render",
+    "@opentelemetry/sdk-trace-node",
+    "@opentelemetry/exporter-trace-otlp-http",
   ],
   agentRules: false,
 };

@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "@pathwise/core/config";
+import { startTelemetry } from "@pathwise/core/telemetry";
 import { runCli } from "./cli";
 import { runInit } from "./init";
 import { startWorker } from "./worker";
@@ -17,9 +18,12 @@ switch (cmd) {
   case "init":
     await runInit(process.env, { migrationsFolder });
     break;
-  case "worker":
-    await startWorker(loadConfig());
+  case "worker": {
+    const config = loadConfig();
+    const stopTracing = await startTelemetry(config, "pathwise-worker");
+    await startWorker(config, { stopTracing });
     break;
+  }
   case "pathwise":
     process.exitCode = await runCli(rest);
     break;
