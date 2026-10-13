@@ -21,7 +21,6 @@ test("a member without a provider sees the setup prompt", async ({ browser }) =>
 });
 
 test("the admin sets the instance provider and sees usage", async ({ page }) => {
-  await signIn(page, "ada@example.com", "a-very-long-password");
   await page.goto("/admin");
   const section = page.getByRole("region", { name: "Instance provider" });
   await section.getByLabel("Provider", { exact: true }).click();

@@ -5,7 +5,7 @@ test.describe.configure({ mode: "serial" });
 let inviteUrl = "";
 
 test("admin invites a user", async ({ page }) => {
-  await signIn(page, "ada@example.com", "a-very-long-password");
+  await page.goto("/");
   await page.getByRole("link", { name: "Admin" }).click();
   await page.getByLabel("Invite email").fill("bob@example.com");
   await page.getByRole("button", { name: "Create invite" }).click();
@@ -34,7 +34,7 @@ test("a non-admin cannot open the admin page", async ({ browser }) => {
   await expect(page).toHaveURL(/\/$/);
 });
 test("admin sees that email is not configured", async ({ page }) => {
-  await signIn(page, "ada@example.com", "a-very-long-password");
+  await page.goto("/");
   await page.goto("/admin");
   await expect(
     page.getByText(
@@ -46,7 +46,6 @@ test("admin sees that email is not configured", async ({ page }) => {
 });
 
 test("admin sees job queue health", async ({ page }) => {
-  await signIn(page);
   await page.goto("/admin");
   await expect(page.getByRole("heading", { name: "Job queue", exact: true })).toBeVisible();
   await expect(page.getByRole("cell", { name: "session.curate", exact: true })).toBeVisible();

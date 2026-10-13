@@ -20,11 +20,12 @@ test("an invited user downloads their own data", async ({ page, browser }) => {
     await carolPage.getByRole("button", { name: "Create account" }).click();
     await expect(carolPage.getByRole("heading", { name: `Welcome, ${carol.name}` })).toBeVisible();
     await carolPage.goto("/settings");
-    const [download, response] = await Promise.all([
+    const [download] = await Promise.all([
       carolPage.waitForEvent("download"),
-      carolPage.waitForResponse((response) => response.url().endsWith("/api/account/export")),
       carolPage.getByRole("link", { name: "Download my data" }).click(),
     ]);
+    // Chromium downloads emit a download event without a page response event.
+    const response = await carolPage.request.get("/api/account/export");
     expect(response.status()).toBe(200);
     expect(response.headers()["content-type"]).toBe("application/zip");
     expect(response.headers()["cache-control"]).toBe("no-store");

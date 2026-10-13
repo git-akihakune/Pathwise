@@ -16,8 +16,8 @@ export default defineConfig({
     {
       name: "admin",
       testMatch: "admin.spec.ts",
-      dependencies: ["auth"],
-      use: { ...devices["Desktop Chrome"] },
+      dependencies: ["auth", "domain-setup"],
+      use: { ...devices["Desktop Chrome"], storageState: ADA_STATE },
     },
     {
       name: "account",
@@ -35,7 +35,7 @@ export default defineConfig({
       name: "instance-provider",
       testMatch: "instance-provider.spec.ts",
       dependencies: ["settings"],
-      use: { ...devices["Desktop Chrome"] },
+      use: { ...devices["Desktop Chrome"], storageState: ADA_STATE },
     },
     {
       name: "coach",
