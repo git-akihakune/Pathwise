@@ -55,6 +55,18 @@ export async function getCheckin(db: DbOrTx, userId: string, id: string): Promis
   return toCheckin(row);
 }
 
+export async function getCheckinForWeek(
+  db: DbOrTx,
+  userId: string,
+  weekOf: string,
+): Promise<Checkin | null> {
+  const [row] = await db
+    .select()
+    .from(schema.checkins)
+    .where(and(eq(schema.checkins.userId, userId), eq(schema.checkins.weekOf, weekOf)));
+  return row ? toCheckin(row) : null;
+}
+
 export async function latestCheckin(db: DbOrTx, userId: string): Promise<Checkin | null> {
   const [row] = await db
     .select()

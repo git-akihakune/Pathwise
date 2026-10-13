@@ -10,6 +10,7 @@ import { checkinWeekOf, computeDueAt } from "./schedule";
 import {
   createScheduledCheckin,
   getCheckin,
+  getCheckinForWeek,
   markMissed,
   markNudged,
   markSent,
@@ -45,7 +46,7 @@ export async function findUserIdByEmail(db: DbOrTx, email: string): Promise<stri
   return row?.id ?? null;
 }
 
-/** Creates this week's check-in for every user with an active plan whose due time has passed. */
+/** Creates due check-ins and retries overdue scheduled rows for users with an active plan. */
 export async function dispatchCheckins(
   deps: CheckinDeps,
   now: Date = new Date(),
@@ -73,12 +74,23 @@ export async function dispatchCheckins(
       };
       const dueAt = computeDueAt(settings, now);
       if (dueAt.getTime() > now.getTime()) continue;
-      const checkin = await createScheduledCheckin(deps.db, u.userId, {
-        weekOf: checkinWeekOf(dueAt, settings.timezone ?? "UTC"),
+      const weekOf = checkinWeekOf(dueAt, settings.timezone ?? "UTC");
+      let checkin = await createScheduledCheckin(deps.db, u.userId, {
+        weekOf,
         dueAt,
       });
-      if (!checkin) continue;
-      created++;
+      if (checkin) {
+        created++;
+      } else {
+        checkin = await getCheckinForWeek(deps.db, u.userId, weekOf);
+        // Recover failed enqueues or exhausted prepare retries on a later dispatch tick.
+        if (
+          checkin?.status !== "scheduled" ||
+          now.getTime() - checkin.dueAt.getTime() < 5 * 60_000
+        ) {
+          continue;
+        }
+      }
       await deps.queue.send(
         JOBS.checkinPrepare,
         { userId: u.userId, checkinId: checkin.id },
@@ -130,8 +142,7 @@ export async function prepareCheckin(
 
   const run = await startWorkflow(deps, userId, "checkin", { checkinId, weekOf: checkin.weekOf });
   await setCheckinRun(db, userId, checkinId, run.id);
-  // Claim before sending: a retry then finds the row already sent and never emails twice.
-  if (!(await markSent(db, userId, checkinId, now))) return;
+  // Enqueue before claiming so a queue failure leaves preparation retryable.
   await deps.queue.send(
     JOBS.checkinFollowup,
     { userId, checkinId, stage: "nudge" },
@@ -140,6 +151,8 @@ export async function prepareCheckin(
       singletonKey: `${JOBS.checkinFollowup}:nudge:${checkinId}`,
     },
   );
+  // Claim before emailing: only the winning transition sends an email.
+  if (!(await markSent(db, userId, checkinId, now))) return;
   if (!(await emailAllowed(deps, userId))) return;
   const week = run.state.week as WeekSummary | undefined;
   await trySend(deps, (await getUserContact(db, userId)).email, "prepare", async () =>
@@ -166,8 +179,10 @@ export async function followupCheckin(
     if (workflowRunId) await abandonRun(db, userId, workflowRunId);
     return;
   }
-  if (!(await markNudged(db, userId, checkinId, now))) return;
-  const { dueAt } = await getCheckin(db, userId, checkinId);
+  const checkin = await getCheckin(db, userId, checkinId);
+  if (checkin.status !== "sent") return;
+  const { dueAt } = checkin;
+  // Preserve the sent state if enqueueing the final check fails, allowing a retry.
   await deps.queue.send(
     JOBS.checkinFollowup,
     { userId, checkinId, stage: "final" },
@@ -179,6 +194,7 @@ export async function followupCheckin(
       singletonKey: `${JOBS.checkinFollowup}:final:${checkinId}`,
     },
   );
+  if (!(await markNudged(db, userId, checkinId, now))) return;
   if (!(await emailAllowed(deps, userId))) return;
   const contact = await getUserContact(db, userId);
   await trySend(deps, contact.email, "nudge", () =>
@@ -186,7 +202,7 @@ export async function followupCheckin(
   );
 }
 
-/** Opens this week's check-in right now (the CLI); `opened: false` when the week already has one. */
+/** Opens or resumes this week's scheduled check-in (the CLI). */
 export async function openCheckinNow(
   deps: CheckinDeps,
   userId: string,
@@ -194,8 +210,10 @@ export async function openCheckinNow(
 ): Promise<{ opened: boolean; weekOf: string }> {
   const tz = (await getUserSettings(deps.db, userId)).timezone ?? "UTC";
   const weekOf = checkinWeekOf(now, tz);
-  const checkin = await createScheduledCheckin(deps.db, userId, { weekOf, dueAt: now });
-  if (!checkin) return { opened: false, weekOf };
+  const checkin =
+    (await createScheduledCheckin(deps.db, userId, { weekOf, dueAt: now })) ??
+    (await getCheckinForWeek(deps.db, userId, weekOf));
+  if (checkin?.status !== "scheduled") return { opened: false, weekOf };
   await prepareCheckin(deps, { userId, checkinId: checkin.id }, now);
   return { opened: true, weekOf };
 }

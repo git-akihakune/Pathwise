@@ -1,6 +1,6 @@
 // packages/core/src/services/checkins/jobs.int.test.ts
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getTestDb, resetDb } from "../../../../../test/integration/db";
 import { fakeMailer, seedUser, workflowDeps } from "../../../../../test/integration/fixtures";
 import { schema } from "../../db";
@@ -50,7 +50,7 @@ describe("check-in jobs", () => {
   it("dispatches once the local due time passes, once per week (Review Focus 2)", async () => {
     await dispatchCheckins(deps, new Date("2026-10-18T21:59:00Z"));
     expect(await db.$count(schema.checkins)).toBe(0);
-    await Promise.all([dispatchCheckins(deps, AFTER), dispatchCheckins(deps, AFTER)]);
+    await Promise.all([dispatchCheckins(deps, DUE), dispatchCheckins(deps, DUE)]);
     const c = await only();
     expect(await db.$count(schema.checkins)).toBe(1);
     expect(c).toMatchObject({ weekOf: "2026-10-12", status: "scheduled", dueAt: DUE });
@@ -71,6 +71,63 @@ describe("check-in jobs", () => {
       .set({ checkinEnabled: false })
       .where(eq(schema.userSettings.userId, "u1"));
     expect(await dispatchCheckins(deps, AFTER)).toEqual({ created: 0 });
+  });
+  it("recovers an overdue scheduled check-in after dispatch enqueue fails", async () => {
+    vi.spyOn(deps.queue, "send").mockRejectedValueOnce(new Error("queue unavailable"));
+    expect(await dispatchCheckins(deps, DUE)).toEqual({ created: 1 });
+    const c = await only();
+    await dispatchCheckins(deps, new Date("2026-10-18T22:04:00Z"));
+    expect(jobs("checkin.prepare")).toHaveLength(0);
+    expect(await dispatchCheckins(deps, AFTER)).toEqual({ created: 0 });
+    expect(jobs("checkin.prepare")).toEqual([
+      {
+        name: "checkin.prepare",
+        data: { userId: "u1", checkinId: c.id },
+        opts: { singletonKey: `checkin.prepare:${c.id}` },
+      },
+    ]);
+    await prepareCheckin(deps, { userId: "u1", checkinId: c.id }, AFTER);
+    await dispatchCheckins(deps, new Date("2026-10-18T22:25:00Z"));
+    expect(await db.$count(schema.checkins)).toBe(1);
+    expect((await getCheckin(db, "u1", c.id)).status).toBe("sent");
+    expect(jobs("checkin.prepare")).toHaveLength(1);
+  });
+  it("prepare retries a failed nudge enqueue without losing the email or workflow", async () => {
+    await dispatchCheckins(deps, AFTER);
+    const c = await only();
+    vi.spyOn(deps.queue, "send").mockRejectedValueOnce(new Error("queue unavailable"));
+    await expect(prepareCheckin(deps, { userId: "u1", checkinId: c.id }, AFTER)).rejects.toThrow(
+      "queue unavailable",
+    );
+    const runId = (await getCheckin(db, "u1", c.id)).workflowRunId;
+    expect((await getCheckin(db, "u1", c.id)).status).toBe("scheduled");
+    expect(deps.mailer.sent).toHaveLength(0);
+    await prepareCheckin(deps, { userId: "u1", checkinId: c.id }, AFTER);
+    await prepareCheckin(deps, { userId: "u1", checkinId: c.id }, AFTER);
+    expect(await getCheckin(db, "u1", c.id)).toMatchObject({
+      status: "sent",
+      workflowRunId: runId,
+    });
+    expect(deps.mailer.sent).toHaveLength(1);
+    expect(jobs("checkin.followup")).toHaveLength(1);
+  });
+  it("nudge retries a failed final enqueue without losing the final check", async () => {
+    const c = await dispatchAndPrepare();
+    const data = { userId: "u1", checkinId: c.id, stage: "nudge" as const };
+    const nudgeAt = new Date("2026-10-20T22:10:00Z");
+    vi.spyOn(deps.queue, "send").mockRejectedValueOnce(new Error("queue unavailable"));
+    await expect(followupCheckin(deps, data, nudgeAt)).rejects.toThrow("queue unavailable");
+    expect((await getCheckin(db, "u1", c.id)).status).toBe("sent");
+    await followupCheckin(deps, data, nudgeAt);
+    await followupCheckin(deps, data, nudgeAt);
+    expect((await getCheckin(db, "u1", c.id)).status).toBe("nudged");
+    expect(deps.mailer.sent).toHaveLength(2);
+    expect(
+      jobs("checkin.followup").filter((j) => (j.data as { stage?: string }).stage === "final"),
+    ).toHaveLength(1);
+    await followupCheckin(deps, { ...data, stage: "final" }, new Date("2026-10-25T22:00:00Z"));
+    expect((await getCheckin(db, "u1", c.id)).status).toBe("missed");
+    expect(await getActiveRun(db, "u1", "checkin")).toBeNull();
   });
   it("prepare opens the run, emails once, and schedules the nudge (Review Focus 2)", async () => {
     const c = await dispatchAndPrepare();
@@ -154,5 +211,14 @@ describe("check-in jobs", () => {
     expect(await openCheckinNow(deps, "u1", now)).toEqual({ opened: true, weekOf: "2026-10-12" });
     expect(await openCheckinNow(deps, "u1", now)).toEqual({ opened: false, weekOf: "2026-10-12" });
     expect((await only()).status).toBe("sent");
+  });
+  it("openCheckinNow resumes a scheduled check-in after preparation fails", async () => {
+    const now = new Date("2026-10-14T15:00:00Z");
+    vi.spyOn(deps.queue, "send").mockRejectedValueOnce(new Error("queue unavailable"));
+    await expect(openCheckinNow(deps, "u1", now)).rejects.toThrow("queue unavailable");
+    expect(await openCheckinNow(deps, "u1", now)).toEqual({ opened: true, weekOf: "2026-10-12" });
+    expect(await db.$count(schema.checkins)).toBe(1);
+    expect((await only()).status).toBe("sent");
+    expect(deps.mailer.sent).toHaveLength(1);
   });
 });
