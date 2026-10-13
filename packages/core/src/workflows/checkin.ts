@@ -5,7 +5,7 @@ import {
   getCheckin,
   markCompleted,
   setCheckinEnergy,
-} from "../services/checkins";
+} from "../services/checkins/service";
 import { buildWeekSummary, type WeekSummary } from "../services/checkins/week";
 import { addMemory, listMemory, MEMORY_CATEGORIES } from "../services/memory";
 import { latestSessionForRun, recentMessages, setSessionSummary } from "../services/sessions";

@@ -10,6 +10,7 @@ it("prints usage and exits 2 for unknown commands", async () => {
   expect(await runCli(["frobnicate"], sink)).toBe(2);
   expect(out.join("\n")).toMatch(/admin reset-password <email>/);
   expect(out.join("\n")).toMatch(/admin rotate-encryption-key/);
+  expect(out.join("\n")).toMatch(/checkin start <email>/);
 });
 it("healthcheck exits 1 when the heartbeat is missing", async () => {
   expect(await runCli(["healthcheck"], io().io)).toBe(1);

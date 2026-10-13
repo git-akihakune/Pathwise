@@ -3,6 +3,7 @@ import { curateSession } from "../memory/curator";
 import { embedPending } from "../memory/embed";
 import { refreshSnapshot } from "../memory/snapshot";
 import { summarizeSession } from "../memory/summarize";
+import { checkinJobs } from "./checkins";
 import { documentParseJob } from "./documents";
 import { JOBS } from "./queue";
 import type { AnyJobDefinition, JobDefinition } from "./register";
@@ -63,7 +64,6 @@ const snapshotRefreshJob: JobDefinition<{ userId: string }> = {
   },
 };
 
-/** Plan 5 appends its definitions. */
 export const coreJobs: AnyJobDefinition[] = [
   maintenanceTick,
   memoryEmbed,
@@ -71,4 +71,5 @@ export const coreJobs: AnyJobDefinition[] = [
   sessionSummarize,
   snapshotRefreshJob,
   documentParseJob,
+  ...checkinJobs,
 ];

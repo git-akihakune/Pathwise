@@ -8,6 +8,9 @@ export const JOBS = {
   snapshotRefresh: "snapshot.refresh",
   maintenanceTick: "maintenance.tick",
   documentParse: "document.parse",
+  checkinDispatch: "checkin.dispatch",
+  checkinPrepare: "checkin.prepare",
+  checkinFollowup: "checkin.followup",
 } as const;
 
 export interface JobQueue {

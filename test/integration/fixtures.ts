@@ -112,10 +112,12 @@ export function testDeps(db: Db, o: { llmMode?: "live" | "mock" } = {}): LlmDeps
   return { db, config: testConfig({ llmMode: o.llmMode ?? "live" }) };
 }
 
+type SendOpts = Parameters<JobQueue["send"]>[2] & object;
+
 export function fakeQueue(): JobQueue & {
-  sent: { name: string; data: object; opts?: object }[];
+  sent: { name: string; data: object; opts?: SendOpts }[];
 } {
-  const sent: { name: string; data: object; opts?: object }[] = [];
+  const sent: { name: string; data: object; opts?: SendOpts }[] = [];
   return {
     sent,
     async send(name, data, opts) {
