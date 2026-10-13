@@ -7,6 +7,7 @@ export const JOBS = {
   memoryEmbed: "memory.embed",
   snapshotRefresh: "snapshot.refresh",
   maintenanceTick: "maintenance.tick",
+  documentParse: "document.parse",
 } as const;
 
 export interface JobQueue {

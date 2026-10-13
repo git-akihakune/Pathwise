@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   check,
   index,
+  integer,
   jsonb,
   pgTable,
   text,
@@ -41,5 +42,42 @@ export const workflowRuns = pgTable(
       .on(t.userId, t.type)
       .where(sql`${t.status} in ('active', 'needs_attention')`),
     index("workflow_runs_user_type_idx").on(t.userId, t.type, t.createdAt),
+  ],
+);
+
+export const DOCUMENT_KINDS = ["cv", "linkedin", "other"] as const;
+export const DOCUMENT_MIMES = [
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+] as const;
+export const DOCUMENT_STATUSES = ["pending", "parsed", "failed"] as const;
+
+export const documents = pgTable(
+  "documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    filename: text("filename").notNull(),
+    mime: text("mime").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    /** `<userId>/<uuid>` relative to FILES_DIR; null for pasted text. */
+    storagePath: text("storage_path"),
+    extractedText: text("extracted_text"),
+    /** DocumentExtraction (Task 4). */
+    extraction: jsonb("extraction").$type<unknown>(),
+    status: text("status").notNull().default("pending"),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("documents_kind", inList(t.kind, DOCUMENT_KINDS)),
+    check("documents_mime", inList(t.mime, DOCUMENT_MIMES)),
+    check("documents_status", inList(t.status, DOCUMENT_STATUSES)),
+    index("documents_user_idx").on(t.userId, t.createdAt),
   ],
 );
