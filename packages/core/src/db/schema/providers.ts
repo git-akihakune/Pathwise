@@ -62,6 +62,7 @@ export const userSettings = pgTable(
     checkinDay: smallint("checkin_day").notNull().default(0),
     checkinTime: text("checkin_time").notNull().default("18:00"),
     emailEnabled: boolean("email_enabled").notNull().default(true),
+    checkinIcsSequence: integer("checkin_ics_sequence").notNull().default(0),
     profileVersion: integer("profile_version").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

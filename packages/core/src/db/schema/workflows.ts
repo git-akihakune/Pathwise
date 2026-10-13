@@ -1,10 +1,12 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  date,
   index,
   integer,
   jsonb,
   pgTable,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
@@ -79,5 +81,36 @@ export const documents = pgTable(
     check("documents_mime", inList(t.mime, DOCUMENT_MIMES)),
     check("documents_status", inList(t.status, DOCUMENT_STATUSES)),
     index("documents_user_idx").on(t.userId, t.createdAt),
+  ],
+);
+
+export const CHECKIN_STATUSES = ["scheduled", "sent", "nudged", "completed", "missed"] as const;
+
+export const checkins = pgTable(
+  "checkins",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    weekOf: date("week_of", { mode: "string" }).notNull(),
+    dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+    workflowRunId: uuid("workflow_run_id").references(() => workflowRuns.id, {
+      onDelete: "set null",
+    }),
+    energy: smallint("energy"),
+    summary: text("summary"),
+    status: text("status").notNull().default("scheduled"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    nudgedAt: timestamp("nudged_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("checkins_energy", sql`${t.energy} between 1 and 5`),
+    check("checkins_status", inList(t.status, CHECKIN_STATUSES)),
+    uniqueIndex("checkins_user_week").on(t.userId, t.weekOf),
+    index("checkins_user_due_idx").on(t.userId, t.dueAt),
   ],
 );

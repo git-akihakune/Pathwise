@@ -1,11 +1,12 @@
 import { MODEL_SUGGESTIONS } from "@pathwise/core/llm";
 import { getProviderStatusForUser, listProviderConfigs } from "@pathwise/core/services/providers";
-import { getUserSettings } from "@pathwise/core/services/settings";
+import { effectiveTimezone, getUserSettings } from "@pathwise/core/services/settings";
 import { connection } from "next/server";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getServer } from "@/lib/server";
 import { requireSession } from "@/lib/session";
+import { CheckinScheduleForm } from "./checkin-schedule-form";
 import { CoachSettings } from "./coach-settings";
 import { ProviderList } from "./provider-list";
 
@@ -62,6 +63,24 @@ export default async function SettingsPage() {
             bluntness={settings.bluntness}
             timezone={settings.timezone}
             timezones={Intl.supportedValuesOf("timeZone")}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <h2>Check-ins</h2>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CheckinScheduleForm
+            enabled={settings.checkinEnabled}
+            day={settings.checkinDay}
+            time={settings.checkinTime}
+            emailEnabled={settings.emailEnabled}
+            timezone={effectiveTimezone(settings)}
+            smtpConfigured={config.smtp !== null}
           />
         </CardContent>
       </Card>

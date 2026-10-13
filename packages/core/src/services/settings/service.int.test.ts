@@ -22,6 +22,7 @@ describe("user settings", () => {
       checkinDay: 0,
       checkinTime: "18:00",
       emailEnabled: true,
+      checkinIcsSequence: 0,
       profileVersion: 0,
     });
     expect(b).toEqual(a);

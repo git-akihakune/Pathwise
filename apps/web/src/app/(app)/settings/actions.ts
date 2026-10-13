@@ -7,7 +7,7 @@ import {
   saveProviderConfig,
   testProviderConfig,
 } from "@pathwise/core/services/providers";
-import { updateUserSettings } from "@pathwise/core/services/settings";
+import { updateCheckinSchedule, updateUserSettings } from "@pathwise/core/services/settings";
 import { revalidatePath } from "next/cache";
 import { toFormError } from "@/lib/form-error";
 import { optional, parseProviderInput, text } from "@/lib/provider-input";
@@ -22,6 +22,7 @@ export type ProviderFormState =
   | undefined;
 
 export type CoachSettingsState = { error?: string; saved?: boolean } | undefined;
+export type CheckinScheduleState = { error?: string; saved?: boolean } | undefined;
 
 export async function saveProviderAction(
   _prev: ProviderFormState,
@@ -91,6 +92,26 @@ export async function saveCoachSettingsAction(
     await updateUserSettings(getServer().db, userId, {
       bluntness: Number(fd.get("bluntness")) as 1 | 2 | 3 | 4 | 5,
       timezone: text(fd, "timezone") || null,
+    });
+    return { saved: true };
+  } catch (e) {
+    return toFormError(e);
+  } finally {
+    revalidatePath("/", "layout");
+  }
+}
+
+export async function saveCheckinScheduleAction(
+  _prev: CheckinScheduleState,
+  fd: FormData,
+): Promise<CheckinScheduleState> {
+  const { userId } = await requireSession();
+  try {
+    await updateCheckinSchedule(getServer().db, userId, {
+      enabled: fd.get("enabled") === "on",
+      day: Number(fd.get("day")),
+      time: text(fd, "time"),
+      emailEnabled: fd.get("emailEnabled") === "on",
     });
     return { saved: true };
   } catch (e) {

@@ -10,6 +10,7 @@ export interface UserSettings {
   checkinDay: number;
   checkinTime: string;
   emailEnabled: boolean;
+  checkinIcsSequence: number;
   profileVersion: number;
 }
 
@@ -35,6 +36,7 @@ function toSettings(row: typeof schema.userSettings.$inferSelect): UserSettings 
     checkinDay: row.checkinDay,
     checkinTime: row.checkinTime,
     emailEnabled: row.emailEnabled,
+    checkinIcsSequence: row.checkinIcsSequence,
     profileVersion: row.profileVersion,
   };
 }
