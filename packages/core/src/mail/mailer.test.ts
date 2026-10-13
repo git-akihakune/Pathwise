@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 import { expect, it } from "vitest";
-import { createMailer } from "./mailer";
+import { createMailer, smtpTransportOptions } from "./mailer";
 
 const smtp = {
   host: "smtp.example.com",
@@ -38,4 +38,20 @@ it("sends html, text and a calendar part", async () => {
   expect(raw[0]).toMatch(/^From: coach@example\.com/m);
   expect(raw[0]).toContain("Content-Type: text/calendar; charset=utf-8; method=REQUEST");
   expect(raw[0]).toContain("filename=checkin.ics");
+});
+
+it("sets timeouts and requires TLS for authenticated non-465 SMTP", () => {
+  const o = smtpTransportOptions({ ...smtp, user: "u", pass: "p" });
+  expect(o).toMatchObject({
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+    requireTLS: true,
+    secure: false,
+  });
+  expect(smtpTransportOptions({ ...smtp, user: "u", pass: "p", port: 465 })).toMatchObject({
+    secure: true,
+    requireTLS: false,
+  });
+  expect(smtpTransportOptions(smtp).requireTLS).toBe(false);
 });

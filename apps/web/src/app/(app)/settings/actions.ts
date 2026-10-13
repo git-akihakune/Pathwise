@@ -22,6 +22,13 @@ import { requireSession } from "@/lib/session";
 
 const log = createLogger("settings");
 
+/** SMTP error messages can contain recipient addresses, so log only a code or name. */
+function calendarErrorLabel(e: unknown): string {
+  const code = (e as { code?: unknown } | null)?.code;
+  if (typeof code === "string") return code;
+  return e instanceof Error ? e.name : "unknown";
+}
+
 /** Emails a calendar invite or cancellation if the settings change calls for one. Never throws. */
 async function syncCalendar(
   before: Parameters<typeof calendarAction>[0] & { checkinIcsSequence: number },
@@ -41,10 +48,7 @@ async function syncCalendar(
     );
     return action === "request";
   } catch (e) {
-    log.error(
-      { err: e instanceof Error ? e.message : "unknown", userId },
-      "calendar invite failed",
-    );
+    log.error({ err: calendarErrorLabel(e), userId }, "calendar invite failed");
     return false;
   }
 }

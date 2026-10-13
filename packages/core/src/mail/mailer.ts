@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import type { AppConfig } from "../config";
+import type { AppConfig, SmtpConfig } from "../config";
 import { ConfigError } from "../errors";
 
 export interface MailMessage {
@@ -16,6 +16,22 @@ export interface Mailer {
   send(msg: MailMessage): Promise<void>;
 }
 
+const TIMEOUT_MS = 10_000;
+
+export function smtpTransportOptions(smtp: SmtpConfig) {
+  return {
+    host: smtp.host,
+    port: smtp.port,
+    secure: smtp.port === 465,
+    // Never send AUTH in cleartext after a STARTTLS downgrade.
+    requireTLS: Boolean(smtp.user) && smtp.port !== 465,
+    connectionTimeout: TIMEOUT_MS,
+    greetingTimeout: TIMEOUT_MS,
+    socketTimeout: TIMEOUT_MS,
+    auth: smtp.user ? { user: smtp.user, pass: smtp.pass ?? "" } : undefined,
+  };
+}
+
 export function createMailer(
   config: Pick<AppConfig, "smtp">,
   opts: { transport?: { sendMail(o: object): Promise<unknown> } } = {},
@@ -29,14 +45,7 @@ export function createMailer(
       },
     };
   }
-  const transport =
-    opts.transport ??
-    nodemailer.createTransport({
-      host: smtp.host,
-      port: smtp.port,
-      secure: smtp.port === 465,
-      auth: smtp.user ? { user: smtp.user, pass: smtp.pass ?? "" } : undefined,
-    });
+  const transport = opts.transport ?? nodemailer.createTransport(smtpTransportOptions(smtp));
   return {
     enabled: true,
     async send(msg) {

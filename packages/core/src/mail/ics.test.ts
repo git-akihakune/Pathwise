@@ -74,7 +74,7 @@ describe("buildCheckinIcs", () => {
 });
 
 it("escapes TEXT values", () => {
-  expect(escapeIcsText("a,b;c\\d\ne")).toBe("a\\,b;c\\\\d\\ne");
+  expect(escapeIcsText("a,b;c\\d\ne")).toBe("a\\,b\\;c\\\\d\\ne");
 });
 
 it("parses the bare address out of a From header", () => {
@@ -86,4 +86,13 @@ it("parses the bare address out of a From header", () => {
 it("uses the bare address as organizer when From has a display name", () => {
   const ics = buildCheckinIcs({ ...base, organizer: bareEmail("Pathwise <coach@example.com>") });
   expect(ics).toContain("ORGANIZER;CN=Pathwise:mailto:coach@example.com\r\n");
+});
+
+it("strips control characters from attendee email and organizer", () => {
+  const ics = buildCheckinIcs({
+    ...base,
+    organizer: "coach@example.com\r\nX-EVIL:1",
+    attendee: { email: "ada@example.com\r\nX-EVIL:2", name: "Ada" },
+  });
+  expect(ics).not.toMatch(/\r\nX-EVIL/);
 });

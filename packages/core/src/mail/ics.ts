@@ -1,3 +1,7 @@
+/** Drops CR, LF and other control characters so a value can't inject extra content lines. */
+const stripControl = (v: string) =>
+  [...v].filter((c) => c.charCodeAt(0) > 0x1f && c.charCodeAt(0) !== 0x7f).join("");
+
 const BYDAY = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"] as const;
 
 export interface CheckinIcsInput {
@@ -22,7 +26,7 @@ export interface CheckinIcsInput {
 export function escapeIcsText(s: string): string {
   return s
     .replaceAll("\\", "\\\\")
-    .replaceAll(";", ";")
+    .replaceAll(";", "\\;")
     .replaceAll(",", "\\,")
     .replaceAll(/\r\n|\r|\n/g, "\\n");
 }
@@ -76,8 +80,8 @@ export function buildCheckinIcs(i: CheckinIcsInput): string {
     "SUMMARY:Pathwise weekly check-in",
     `DESCRIPTION:${escapeIcsText(`Start your check-in: ${i.url}`)}`,
     `URL:${i.url}`,
-    `ORGANIZER;CN=Pathwise:mailto:${i.organizer}`,
-    `ATTENDEE;CN="${cn}";RSVP=FALSE:mailto:${i.attendee.email}`,
+    `ORGANIZER;CN=Pathwise:mailto:${stripControl(i.organizer)}`,
+    `ATTENDEE;CN="${cn}";RSVP=FALSE:mailto:${stripControl(i.attendee.email)}`,
     `STATUS:${i.method === "CANCEL" ? "CANCELLED" : "CONFIRMED"}`,
     "END:VEVENT",
     "END:VCALENDAR",
