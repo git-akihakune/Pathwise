@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { getTestDb, resetDb } from "../../../../../test/integration/db";
 import {
+  readUIStream,
   runTool,
   seedProvider,
   seedUser,
@@ -8,10 +9,10 @@ import {
 } from "../../../../../test/integration/fixtures";
 import { resolveLlm } from "../../llm";
 import { createScheduledCheckin } from "../../services/checkins";
-import { actionsForWeek, createPlan } from "../../services/plan";
+import { actionsForWeek, createPlan, setActionStatus } from "../../services/plan";
 import { listProposals } from "../../services/proposals";
 import { appendMessage, getOrStartSession } from "../../services/sessions";
-import { abandonRun, advance, startWorkflow } from "../../workflows";
+import { abandonRun, advance, runWorkflowTurn, startWorkflow } from "../../workflows";
 import { getSkill, mergeSkillTools, type SkillContext } from "..";
 
 const db = getTestDb();
@@ -188,4 +189,77 @@ it("uses the capped checkin proposal tool in the actual replan merge", async () 
     error: "Energy is low this week (2/5). Propose at most 2 new actions.",
   });
   expect(await listProposals(db, "u1")).toEqual([]);
+});
+
+it("uses the current action version after a manual edit", async () => {
+  const id = actionIds[0] as string;
+  await setActionStatus(db, "u1", id, "done", 1);
+  await runTool(tools, "proposeActionStatusUpdates", {
+    updates: [{ actionId: id, status: "skipped" }],
+  });
+  expect(await listProposals(db, "u1")).toMatchObject([
+    { payload: { updates: [{ actionId: id, status: "skipped", basedOnVersion: 2 }] } },
+  ]);
+  expect((await actionsForWeek(db, "u1", "2026-10-12")).find((a) => a.id === id)).toMatchObject({
+    id,
+    status: "done",
+    version: 2,
+  });
+});
+
+it.each([1, 3, undefined])("enforces the cap only for low recorded energy (%s)", async (energy) => {
+  await abandonRun(db, "u1", runId);
+  await startWorkflow(deps, "u1", "checkin", { weekOf: "2026-10-12", energy });
+  const input = {
+    milestones: noChanges,
+    actions: {
+      ...noChanges,
+      add: ["a", "b", "c"].map((title) => ({ title, weekOf: "2026-10-19" })),
+    },
+  };
+  const out = await runTool(tools, "proposePlanChange", input);
+  if (energy === 1) {
+    expect(out).toEqual({ error: "Energy is low this week (1/5). Propose at most 2 new actions." });
+    expect(await listProposals(db, "u1")).toEqual([]);
+  } else {
+    expect(out).toEqual({ proposalId: expect.any(String) });
+    expect(await listProposals(db, "u1")).toMatchObject([
+      {
+        kind: "plan_change",
+        payload: { actions: { add: [{ title: "a" }, { title: "b" }, { title: "c" }] } },
+      },
+    ]);
+  }
+});
+
+it("mock-mode action review proposes the listed action ids without directly changing statuses", async () => {
+  await abandonRun(db, "u1", runId);
+  const run = await startWorkflow(deps, "u1", "checkin", { weekOf: "2026-10-12" });
+  await advance(deps, "u1", run.id, { stepId: "wins", skip: true });
+  await readUIStream(
+    await runWorkflowTurn(deps, {
+      userId: "u1",
+      runId: run.id,
+      message: {
+        id: crypto.randomUUID(),
+        role: "user",
+        parts: [{ type: "text", text: "Mark this week's actions done." }],
+      },
+    }),
+  );
+  expect(await listProposals(db, "u1")).toMatchObject([
+    {
+      kind: "action_status_update",
+      payload: {
+        updates: [
+          { actionId: actionIds[0], status: "done", basedOnVersion: 1 },
+          { actionId: actionIds[1], status: "done", basedOnVersion: 1 },
+        ],
+      },
+    },
+  ]);
+  expect((await actionsForWeek(db, "u1", "2026-10-12")).map((a) => a.status)).toEqual([
+    "todo",
+    "todo",
+  ]);
 });

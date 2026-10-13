@@ -3,14 +3,19 @@ import { z } from "zod";
 import { buildWeekSummary } from "../../services/checkins/week";
 import { actionsForWeek } from "../../services/plan";
 import { createProposal } from "../../services/proposals";
-import { getActiveRun } from "../../workflows/instance";
 import { wrapData } from "../context";
 import { getSkill, registerSkill, type SkillContext } from "../registry";
 
 const noRun = () => ({ error: "No check-in is open." });
 
+async function activeRun(ctx: SkillContext) {
+  // The engine loads the skill registry; defer the reverse edge until a tool/context is used.
+  const { getActiveRun } = await import("../../workflows/instance");
+  return getActiveRun(ctx.deps.db, ctx.userId, "checkin");
+}
+
 function checkinTools(ctx: SkillContext) {
-  const active = () => getActiveRun(ctx.deps.db, ctx.userId, "checkin");
+  const active = () => activeRun(ctx);
   const planning = getSkill("planning").tools(ctx).proposePlanChange;
   if (!planning?.execute) throw new Error("Planning proposal tool is not registered.");
   const proposePlanChange = planning.execute;
@@ -86,7 +91,7 @@ registerSkill({
       id: "checkin.week",
       maxTokens: 600,
       async render(ctx) {
-        const run = await getActiveRun(ctx.deps.db, ctx.userId, "checkin");
+        const run = await activeRun(ctx);
         if (!run) return "";
         const actions = await actionsForWeek(ctx.deps.db, ctx.userId, run.state.weekOf as string);
         const lines = actions.map((a) => `- (id: ${a.id}) ${a.title} [${a.status}]`);

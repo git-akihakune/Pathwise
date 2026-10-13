@@ -67,6 +67,23 @@ function chatToolCall(text: string): { toolName: string; input: unknown } | null
 
 export const chatFixture = (call: MockCall): MockReply => {
   if (call.toolNames.length === 0) return { text: DEFAULT_TEXT };
+  if (
+    /mark this week's actions done/i.test(call.lastUserText) &&
+    call.toolNames.includes("proposeActionStatusUpdates")
+  ) {
+    const week = /<data source="checkin.week">\n([\s\S]*?)\n<\/data>/.exec(call.system)?.[1] ?? "";
+    const ids = [...week.matchAll(/^- \(id: ([0-9a-f-]+)\)/gm)].map((match) => match[1]);
+    if (ids.length)
+      return {
+        toolCalls: [
+          {
+            toolName: "proposeActionStatusUpdates",
+            input: { updates: ids.map((actionId) => ({ actionId, status: "done" })) },
+          },
+        ],
+        text: TOOL_TEXT,
+      };
+  }
   const toolCall = chatToolCall(call.lastUserText.trim());
   if (!toolCall || !call.toolNames.includes(toolCall.toolName)) return { text: DEFAULT_TEXT };
   return { toolCalls: [toolCall], text: TOOL_TEXT };
