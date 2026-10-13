@@ -36,8 +36,9 @@ const TAXONOMY_DIR = fileURLToPath(new URL("../data/taxonomy", import.meta.url))
 const MIGRATIONS_DIR = fileURLToPath(new URL("../packages/core/drizzle", import.meta.url));
 
 function reporting(output: (line: string) => void, secrets: (string | undefined)[]) {
+  const redactions = secrets.flatMap((secret) => [secret, secret?.trim()]);
   const log = (line: string) => {
-    for (const secret of secrets) if (secret) line = line.replaceAll(secret, "[redacted]");
+    for (const secret of redactions) if (secret) line = line.replaceAll(secret, "[redacted]");
     output(line);
   };
   const step = async <T>(name: string, run: () => Promise<T>): Promise<T> => {

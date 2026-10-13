@@ -68,18 +68,21 @@ it("accepts degraded capabilities and completes through prompted JSON fallbacks"
   expect(lines.join("\n")).toContain("degraded (acceptable)");
 });
 
-it("rejects an unsupported provider before parsing or onboarding and redacts its key", async () => {
-  registerMockFixture("probe", () => {
-    throw new Error("Rejected secret-smoke-key");
-  });
-  const lines: string[] = [];
-  await expect(
-    runSmokeScenario(deps, { ...env, apiKey: "secret-smoke-key" }, (line) => lines.push(line)),
-  ).rejects.toThrow("unsupported");
-  expect(deps.queue.sent).toEqual([]);
-  expect(lines.join("\n")).toContain("✘ Capability probe");
-  expect(lines.join("\n")).not.toContain("secret-smoke-key");
-});
+it.each(["secret-smoke-key", " secret-smoke-key "])(
+  "rejects an unsupported provider before parsing or onboarding and redacts its key (%#)",
+  async (apiKey) => {
+    registerMockFixture("probe", () => {
+      throw new Error("Rejected secret-smoke-key");
+    });
+    const lines: string[] = [];
+    await expect(
+      runSmokeScenario(deps, { ...env, apiKey }, (line) => lines.push(line)),
+    ).rejects.toThrow("unsupported");
+    expect(deps.queue.sent).toEqual([]);
+    expect(lines.join("\n")).toContain("✘ Capability probe");
+    expect(lines.join("\n")).not.toContain("secret-smoke-key");
+  },
+);
 
 it("fails when parsing extracts no experience", async () => {
   registerMockFixture("extract.document", () => ({ json: { ...extraction, experiences: [] } }));
