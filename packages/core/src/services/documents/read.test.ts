@@ -2,7 +2,7 @@ import { deflateSync } from "node:zlib";
 import { strToU8, zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import { makeDocx, makePdf } from "../../../../../test/fixtures/documents";
-import { MAX_ZIP_ENTRIES, readDocumentText } from "./read";
+import { MAX_ZIP_ENTRIES, type ReadError, readDocumentText } from "./read";
 import { DOCX_MIME } from "./sniff";
 
 // A central directory whose ZIP64 end record claims 2^32 entries but holds none.
@@ -62,10 +62,9 @@ describe("readDocumentText", () => {
   });
 });
 
-describe("hostile files (worker isolation)", () => {
+describe("hostile files (child process isolation)", () => {
   const rss = () => Math.round(process.memoryUsage().rss / 1048576);
-
-  it("rejects a DOCX whose real content inflates far beyond its declared sizes", async () => {
+  const lyingDocx = () => {
     const big = new Uint8Array(120 * 1024 * 1024).fill(0x20);
     const z = Buffer.from(zipSync({ "word/document.xml": big }, { level: 9 }));
     const name = Buffer.from("word/document.xml");
@@ -76,19 +75,11 @@ describe("hostile files (worker isolation)", () => {
       if (sig === 0x02014b50 && z.subarray(i + 46, i + 46 + name.length).equals(name))
         z.writeUInt32LE(1000, i + 24);
     }
-    expect(z.length).toBeLessThan(500_000);
-    const before = rss();
-    const t = Date.now();
-    await expect(readDocumentText(z, DOCX_MIME)).rejects.toThrow(/too large/i);
-    console.info(`lying-size DOCX: ${Date.now() - t} ms, rss ${before} -> ${rss()} MB`);
-    expect(Date.now() - t).toBeLessThan(10_000);
-  });
-
-  it("survives a FlateDecode PDF bomb", async () => {
-    const raw = Buffer.alloc(300 * 1024 * 1024, 0x20);
-    Buffer.from("BT /F1 12 Tf 72 720 Td (hello) Tj ET").copy(raw, 0);
-    const comp = deflateSync(raw, { level: 9 });
-    const pdf = Buffer.from(
+    return z;
+  };
+  const pdfBomb = (mb: number) => {
+    const comp = deflateSync(Buffer.alloc(mb * 1024 * 1024, 0x20), { level: 9 });
+    return Buffer.from(
       makePdf("x")
         .toString("latin1")
         .replace(
@@ -98,18 +89,61 @@ describe("hostile files (worker isolation)", () => {
         ),
       "latin1",
     );
-    const before = rss();
-    const t = Date.now();
-    const outcome = await readDocumentText(pdf, "application/pdf").then(
-      (x) => `text:${x.length}`,
-      (e: Error) => `rejected:${e.message}`,
+  };
+  const code = (p: Promise<unknown>) =>
+    p.then(
+      () => "ok",
+      (e: ReadError) => e.code,
     );
-    console.info(`PDF bomb: ${outcome} ${Date.now() - t} ms, rss ${before} -> ${rss()} MB`);
-    expect(Date.now() - t).toBeLessThan(35_000);
-    expect(rss() - before).toBeLessThan(1500);
-    // The process is alive and still reads normal files.
+
+  it("rejects a DOCX whose real content inflates far beyond its declared sizes", async () => {
+    const z = lyingDocx();
+    expect(z.length).toBeLessThan(500_000);
+    const t = Date.now();
+    expect(await code(readDocumentText(z, DOCX_MIME))).toBe("too_large");
+    expect(Date.now() - t).toBeLessThan(10_000);
+  });
+
+  it("kills a reader that exceeds the RSS cap", async () => {
+    const t = Date.now();
+    expect(
+      await code(
+        readDocumentText(pdfBomb(300), "application/pdf", { rssCapBytes: 200 * 1024 * 1024 }),
+      ),
+    ).toBe("memory");
+    console.info(`memory kill: ${Date.now() - t} ms`);
+  }, 60_000);
+
+  it("kills a hung reader at the timeout", async () => {
+    const t = Date.now();
+    expect(
+      await code(
+        readDocumentText(makePdf("x"), "application/pdf", { timeoutMs: 500, testMode: "hang" }),
+      ),
+    ).toBe("timeout");
+    expect(Date.now() - t).toBeLessThan(5000);
+  });
+
+  it("reports a crashing reader", async () => {
+    expect(
+      await code(readDocumentText(makePdf("x"), "application/pdf", { testMode: "crash" })),
+    ).toBe("crash");
+  });
+
+  it("keeps the parent's memory bounded across back-to-back bombs, then reads normally", async () => {
+    const bomb = pdfBomb(300);
+    const before = rss();
+    const results: string[] = [];
+    for (let i = 0; i < 2; i++)
+      results.push(
+        await code(readDocumentText(bomb, "application/pdf", { rssCapBytes: 200 * 1024 * 1024 })),
+      );
+    const after = rss();
+    console.info(`back-to-back: ${results} parent rss ${before} -> ${after} MB`);
+    expect(results).toEqual(["memory", "memory"]);
+    expect(after - before).toBeLessThan(250);
     expect(await readDocumentText(makePdf("Still fine"), "application/pdf")).toContain(
       "Still fine",
     );
-  }, 60_000);
+  }, 90_000);
 });

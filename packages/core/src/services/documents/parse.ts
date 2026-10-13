@@ -11,7 +11,7 @@ import {
   MIN_TEXT_CHARS,
   normalizeExtraction,
 } from "./extraction";
-import { readDocumentText } from "./read";
+import { ReadError, readDocumentText } from "./read";
 import { type DocumentErrorCode, readDocumentBytes } from "./service";
 import type { DocumentMime } from "./sniff";
 
@@ -74,7 +74,7 @@ export async function parseDocument(
       text = await readDocumentText(bytes, mime);
     } catch (e) {
       log.warn(
-        { documentId, cause: e instanceof Error ? e.name : "unknown" },
+        { documentId, cause: e instanceof ReadError ? e.code : "unreadable" },
         "document unreadable",
       );
       return fail("unreadable");

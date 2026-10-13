@@ -1,7 +1,6 @@
-// Runs inside a worker thread (see read.ts). Self-contained on purpose: it is loaded directly by
+// Runs inside a forked child process (see read.ts). Self-contained on purpose: it is loaded directly by
 // Node in development/tests and bundled as its own entry for the worker image, so it imports no
 // sibling modules.
-import { isMainThread, parentPort, workerData } from "node:worker_threads";
 import { Unzip, UnzipInflate, UnzipPassThrough, zipSync } from "fflate";
 import mammoth from "mammoth";
 import { extractText, getDocumentProxy } from "unpdf";
@@ -11,6 +10,23 @@ export const MAX_DOCX_UNCOMPRESSED_BYTES = 50 * 1024 * 1024;
 export const MAX_PDF_PAGES = 100;
 /** Stored extracted text is cut here, however much the file holds. */
 export const MAX_TEXT_CHARS = 200_000;
+export type ReadFailure =
+  | "too_large"
+  | "entries"
+  | "pages"
+  | "timeout"
+  | "memory"
+  | "crash"
+  | "unreadable";
+/** A deliberate rejection with a fixed, content-free code. */
+export class ReadError extends Error {
+  override name = "ReadError";
+  readonly code: ReadFailure;
+  constructor(message: string, code: ReadFailure) {
+    super(message);
+    this.code = code;
+  }
+}
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 /**
@@ -22,12 +38,12 @@ function inflateBounded(bytes: Uint8Array): Uint8Array {
   const files: Record<string, Uint8Array> = {};
   let entries = 0;
   let total = 0;
-  let problem: string | null = null;
+  let problem: ReadError | null = null;
   const unzip = new Unzip((file) => {
     if (file.name.endsWith("/")) return;
     entries += 1;
     if (entries > MAX_ZIP_ENTRIES) {
-      problem = "The document has too many entries.";
+      problem = new ReadError("The document has too many entries.", "entries");
       throw STOP;
     }
     const chunks: Uint8Array[] = [];
@@ -35,7 +51,7 @@ function inflateBounded(bytes: Uint8Array): Uint8Array {
       if (err) throw err;
       total += chunk.length;
       if (total > MAX_DOCX_UNCOMPRESSED_BYTES) {
-        problem = "The document is too large when unpacked.";
+        problem = new ReadError("The document is too large when unpacked.", "too_large");
         throw STOP;
       }
       chunks.push(chunk);
@@ -53,7 +69,7 @@ function inflateBounded(bytes: Uint8Array): Uint8Array {
   } catch (err) {
     if (err !== STOP) throw err;
   }
-  if (problem) throw new Error(problem);
+  if (problem) throw problem;
   return zipSync(files, { level: 0 });
 }
 
@@ -64,7 +80,7 @@ export async function readInline(bytes: Uint8Array, mime: string): Promise<strin
     const pdf = await getDocumentProxy(new Uint8Array(bytes));
     try {
       if (pdf.numPages > MAX_PDF_PAGES)
-        throw new Error(`The PDF has more than ${MAX_PDF_PAGES} pages.`);
+        throw new ReadError(`The PDF has more than ${MAX_PDF_PAGES} pages.`, "pages");
       text = (await extractText(pdf, { mergePages: true })).text;
     } finally {
       await pdf.cleanup();
@@ -78,11 +94,24 @@ export async function readInline(bytes: Uint8Array, mime: string): Promise<strin
   return text.slice(0, MAX_TEXT_CHARS);
 }
 
-if (!isMainThread && workerData?.pathwiseRead && parentPort) {
-  const port = parentPort;
-  const { bytes, mime } = workerData as { bytes: Uint8Array; mime: string };
-  readInline(bytes, mime).then(
-    (text) => port.postMessage({ ok: true, text }),
-    (e) => port.postMessage({ ok: false, error: e instanceof Error ? e.message : String(e) }),
-  );
+if (process.env.PATHWISE_READ_CHILD === "1" && process.send) {
+  const send = process.send.bind(process);
+  process.once("message", async (m: { bytes: Uint8Array; mime: string }) => {
+    // Test hooks (set only by read.test.ts): simulate a hung or crashing reader.
+    if (process.env.PATHWISE_READ_TEST === "hang") setInterval(() => {}, 1000);
+    else if (process.env.PATHWISE_READ_TEST === "crash") process.exit(3);
+    else {
+      let reply: { ok: boolean; text?: string; error?: string; code?: ReadFailure };
+      try {
+        reply = { ok: true, text: await readInline(m.bytes, m.mime) };
+      } catch (e) {
+        reply = {
+          ok: false,
+          error: e instanceof Error ? e.message : String(e),
+          code: e instanceof ReadError ? e.code : "unreadable",
+        };
+      }
+      send(reply, () => process.exit(0));
+    }
+  });
 }
