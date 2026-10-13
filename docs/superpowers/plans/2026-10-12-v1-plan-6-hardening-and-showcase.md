@@ -22,7 +22,7 @@ The audit of the merged Plans 1–5 found these corrections. They override the d
 - Tasks 1 and 5: export `ADMIN_LOCK_KEY = 0x41444d4e` from auth and use it for signup, admin promotion, and deletion. Promotion checks the actor within that transaction. Account deletion re-exports the constant for its specified interface.
 - Tasks 3–5 and 10: use the existing `signIn`, `ADA`, `ADA_STATE`, and `domain-setup` E2E helpers/project where applicable, preserving the shared login state and current project dependencies.
 - Task 4: also omit the derived `summary_search` column. Existing `fflate` dependencies already satisfy the requirement.
-- Task 8: taxonomy URL is `../../../data/taxonomy` relative to `evals/src/run.ts`. Test the main instance provider before using it; an untested config cannot resolve. Use an admin harness judge for custom endpoints. Collect tool calls from stream/message parts, since `TurnResult` has no `toolCalls` member.
+- Task 8: taxonomy URL is `../../data/taxonomy` relative to `evals/src/run.ts` (confirmed with Node URL resolution). Test the main instance provider before using it; an untested config cannot resolve. Use an admin harness judge for custom endpoints. Collect tool calls from stream/message parts, since `TurnResult` has no `toolCalls` member.
 - Task 9: `registerSkill` exists in `agent/registry.ts`; the networking example must explain extending `SkillId` and registering with the built-in skills. The bundled manifest has `sources.esco = null`; describe the absent ESCO bundle truthfully while retaining ESCO attribution and import guidance.
 
 ## Spec gaps resolved
