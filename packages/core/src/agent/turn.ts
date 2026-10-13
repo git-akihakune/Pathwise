@@ -210,7 +210,10 @@ export async function runTurn(
         };
       }),
     );
-    if (workflow) skills.push({ id: "workflow", text: `Current step goal: ${workflow.goal}` });
+    // Under distress the persona doesn't push tasks, so the step goal is dropped.
+    if (workflow && distress === "none") {
+      skills.push({ id: "workflow", text: `Current step goal: ${workflow.goal}` });
+    }
 
     const history: UIMessage[] = [...after.filter((m) => m.id !== message.id), message];
     // Providers expect the conversation to start with the user.

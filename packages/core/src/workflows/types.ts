@@ -11,7 +11,8 @@ export const completionCheckSchema = z.object({ done: z.boolean(), reason: z.str
 export type CompletionCheck = z.infer<typeof completionCheckSchema>;
 
 export interface StepRecord {
-  status: "done" | "skipped";
+  /** Unset while a conversational step is open (it only holds the opener and last check). */
+  status?: "done" | "skipped";
   at: string;
   check?: CompletionCheck;
   openerMessageId?: string;

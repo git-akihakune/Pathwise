@@ -1,12 +1,23 @@
+import type { UIMessage } from "ai";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { runTurn, type TurnDeps } from "../agent/turn";
 import { type DbOrTx, schema } from "../db";
-import { LlmUnavailableError, NotFoundError } from "../errors";
-import { isAuthError, isProviderError, StructuredOutputError } from "../llm";
+import { ConflictError, LlmUnavailableError, NotFoundError } from "../errors";
+import { isAuthError, isProviderError, resolveLlm, StructuredOutputError } from "../llm";
 import { createLogger } from "../logger";
+import type { CoachUIMessage } from "../services/sessions";
+import {
+  askCompletion,
+  ensureOpener,
+  ownsMessage,
+  resolveGoal,
+  stepMessages,
+} from "./conversational";
 import {
   ATTENTION_MESSAGES,
   COMPUTE_ATTEMPTS,
   COMPUTE_LEASE_MS,
+  type CompletionCheck,
   type RunState,
   type Step,
   type StepRecord,
@@ -100,6 +111,20 @@ export interface WorkflowEngine {
   ): Promise<WorkflowRun>;
   retryStep(deps: WorkflowDeps, userId: string, runId: string): Promise<WorkflowRun>;
   abandonRun(db: DbOrTx, userId: string, runId: string): Promise<void>;
+  /** ConflictError unless the run is active on a conversational step. */
+  runWorkflowTurn(
+    deps: TurnDeps,
+    input: { userId: string; runId: string; message: UIMessage },
+  ): Promise<Response>;
+  /** Never throws: on any failure the run is returned unchanged. */
+  checkStepCompletion(
+    deps: WorkflowDeps,
+    userId: string,
+    runId: string,
+    sessionId: string,
+    stepId?: string,
+  ): Promise<WorkflowRun>;
+  stepMessages(db: DbOrTx, userId: string, run: WorkflowRun): Promise<CoachUIMessage[]>;
 }
 
 export function createWorkflowEngine(
@@ -196,6 +221,9 @@ export function createWorkflowEngine(
     for (;;) {
       if (cur.status !== "active") return cur;
       const step = stepOf(def, cur.stepId);
+      if (step.kind === "conversational") {
+        return (await ensureOpener(deps.db, userId, step, cur)) ?? reread(deps.db, userId, cur.id);
+      }
       if (step.kind !== "compute") return cur;
 
       const [claimed] = await deps.db
@@ -282,7 +310,90 @@ export function createWorkflowEngine(
     return row ? toRun(row) : null;
   };
 
+  async function checkStepCompletion(
+    deps: WorkflowDeps,
+    userId: string,
+    runId: string,
+    _sessionId: string,
+    stepId?: string,
+  ): Promise<WorkflowRun> {
+    let cur = await reread(deps.db, userId, runId);
+    try {
+      if (cur.status !== "active" || (stepId !== undefined && cur.stepId !== stepId)) return cur;
+      const def = defOf(cur.type);
+      const step = stepOf(def, cur.stepId);
+      if (step.kind !== "conversational") return cur;
+
+      let check: CompletionCheck | undefined;
+      if (await step.isComplete?.({ deps, db: deps.db, userId, run: cur })) {
+        check = { done: true, reason: "complete" };
+      } else {
+        const llm = await resolveLlm(deps, userId);
+        if (!llm) return cur;
+        check = await askCompletion(deps, llm, userId, step, cur);
+      }
+
+      const prev = cur.state.steps?.[step.id];
+      if (!check.done) {
+        const [row] = await deps.db
+          .update(workflowRuns)
+          .set({
+            state: record(cur.state, step.id, { ...prev, check }),
+            updatedAt: sql`now()`,
+          })
+          .where(unchanged(cur))
+          .returning();
+        return row ? toRun(row) : reread(deps.db, userId, runId);
+      }
+      const moved = await moveOn(
+        deps,
+        deps.db,
+        userId,
+        def,
+        cur,
+        record(cur.state, step.id, { ...prev, status: "done", check }),
+      );
+      if (!moved) return reread(deps.db, userId, runId);
+      log.info({ runId, type: cur.type, stepId: step.id, outcome: "done" });
+      cur = await enterStep(deps, userId, def, moved);
+      return cur;
+    } catch (e) {
+      log.warn({ runId, err: e instanceof Error ? e.name : typeof e }, "completion check failed");
+      return reread(deps.db, userId, runId).catch(() => cur);
+    }
+  }
+
   return {
+    checkStepCompletion,
+    stepMessages,
+
+    async runWorkflowTurn(deps, { userId, runId, message }) {
+      const run = await reread(deps.db, userId, runId);
+      const step = run.status === "active" ? stepOf(defOf(run.type), run.stepId) : null;
+      if (step?.kind !== "conversational") {
+        throw new ConflictError("This step has moved on. Refreshing.");
+      }
+      if (!(await ownsMessage(deps.db, userId, run, message.id))) {
+        throw new ConflictError("This step has moved on. Refreshing.");
+      }
+      const stepId = step.id;
+      return runTurn(
+        deps,
+        {
+          userId,
+          message,
+          workflow: { runId, stepId, skills: step.skills, goal: resolveGoal(step, run.state) },
+        },
+        {
+          // A crisis turn answers with the safety response; the step doesn't advance on it (R6).
+          onTurnEnd: async (r) => {
+            if (r.status !== "complete" || r.safety) return;
+            await checkStepCompletion(deps, userId, runId, r.sessionId, stepId);
+          },
+        },
+      );
+    },
+
     getActiveRun,
     getRun: (db, userId, runId) => reread(db, userId, runId),
 

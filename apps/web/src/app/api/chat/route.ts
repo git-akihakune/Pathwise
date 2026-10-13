@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { runTurn, type Screen } from "@pathwise/core/agent";
-import { ConflictError, LlmUnavailableError } from "@pathwise/core/errors";
+import { ConflictError, LlmUnavailableError, NotFoundError } from "@pathwise/core/errors";
 import { isAuthError } from "@pathwise/core/llm";
 import { createLogger } from "@pathwise/core/logger";
+import { runWorkflowTurn } from "@pathwise/core/workflows";
 import { z } from "zod";
 import { getJobQueue } from "@/lib/jobs";
 import { getServer } from "@/lib/server";
@@ -44,16 +45,25 @@ export async function POST(req: Request) {
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return text("That message couldn't be sent.", 400);
   const { message, screen, topic, workflowRunId } = parsed.data;
-  if (workflowRunId) return text("Workflows are not available yet.", 400);
 
   // useChat sends UUIDs; any other client's id is replaced (that client can't regenerate).
   const id = z.string().uuid().safeParse(message.id).success ? message.id : randomUUID();
   const { db, config } = getServer();
   try {
-    return await runTurn(
-      { db, config, queue: getJobQueue() },
-      { userId: user.userId, message: { ...message, id }, screen, topic },
-    );
+    const deps = { db, config, queue: getJobQueue() };
+    if (workflowRunId) {
+      return await runWorkflowTurn(deps, {
+        userId: user.userId,
+        runId: workflowRunId,
+        message: { ...message, id },
+      });
+    }
+    return await runTurn(deps, {
+      userId: user.userId,
+      message: { ...message, id },
+      screen,
+      topic,
+    });
   } catch (e) {
     if ((e instanceof LlmUnavailableError && e.reason === "auth_failed") || isAuthError(e)) {
       return text("Your API key was rejected. Update it in Settings.", 409);
@@ -62,6 +72,7 @@ export async function POST(req: Request) {
       return text("Connect an AI provider in Settings to use the coach.", 409);
     }
     if (e instanceof ConflictError) return text(e.message, 409);
+    if (e instanceof NotFoundError) return text(e.message, 404);
     log.error({ userId: user.userId, err: e instanceof Error ? e.name : typeof e }, "chat failed");
     return text("Something went wrong. Retry in a moment.", 500);
   }

@@ -6,8 +6,18 @@ export { createWorkflowEngine, resolveNextStep, type WorkflowEngine } from "./en
 export * from "./types";
 
 const engine = createWorkflowEngine(WORKFLOW_DEFINITIONS);
-export const { startWorkflow, getActiveRun, getRun, latestRun, advance, retryStep, abandonRun } =
-  engine;
+export const {
+  startWorkflow,
+  getActiveRun,
+  getRun,
+  latestRun,
+  advance,
+  retryStep,
+  abandonRun,
+  runWorkflowTurn,
+  checkStepCompletion,
+  stepMessages,
+} = engine;
 
 /** The step of a run's definition, for UI that needs its kind or manual-fallback hint. */
 export function getStep(type: keyof typeof WORKFLOW_DEFINITIONS, stepId: string) {
