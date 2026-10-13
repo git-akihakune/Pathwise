@@ -28,11 +28,13 @@ init_started() { docker inspect -f '{{.State.StartedAt}}' "$(dc ps -aq init)"; }
 init_first=$(init_started)
 
 before=$(dc exec -T worker sh -c 'sha256sum /var/lib/pathwise/secrets/*')
+taxonomy_before=$(dc exec -T postgres psql -U pathwise -d pathwise -tAc 'select version, imported_at from taxonomy_meta where id = 1')
 dc up -d --wait web worker
 assert_init_ok
 [ "$(init_started)" != "$init_first" ] || { echo "init did not re-run on second up" >&2; exit 1; }
 after=$(dc exec -T worker sh -c 'sha256sum /var/lib/pathwise/secrets/*')
-[ "$(dc logs init | grep -c '"msg":"taxonomy imported"')" = 1 ] || { echo "taxonomy imported again on second up" >&2; exit 1; }
+taxonomy_after=$(dc exec -T postgres psql -U pathwise -d pathwise -tAc 'select version, imported_at from taxonomy_meta where id = 1')
+[ "$taxonomy_before" = "$taxonomy_after" ] || { echo "taxonomy changed on second up" >&2; exit 1; }
 dc logs init | grep -q '"msg":"taxonomy up to date"' || { echo "second init did not report taxonomy up to date" >&2; exit 1; }
 [ "$before" = "$after" ] || { echo "secrets changed across restarts" >&2; exit 1; }
 
