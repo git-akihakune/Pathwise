@@ -16,7 +16,7 @@
 
 ## Completion status (2026-10-13)
 
-Tasks 1–10 are implemented and verified. Final commands passed: lint (four pre-existing warnings), typecheck, 424 unit tests, 418 integration tests, fresh compose smoke (`SMOKE OK`), and all 40 mock E2E tests. The actual [demo GIF](../../assets/demo.gif) is delivered and enabled in README. The user-authorized live sample completed all five fabrication-bait cases with no_fabrication mean 5/5 and zero case errors; the other four live scenarios remain pending. The local Ollama onboarding smoke also passed. See the [durable completion evidence](2026-10-13-v1-plan-6-completion.md) for exact test names, commits, failed-run diagnoses, runtime outcomes, controller rulings and their costs. Historical draft steps below are superseded by this status and the execution corrections.
+Tasks 1–10 are implemented and verified. Final commands passed: lint (four pre-existing warnings), typecheck, 424 unit tests, 422 integration tests, fresh compose smoke (`SMOKE OK`), and all 40 mock E2E tests. The actual [demo GIF](../../assets/demo.gif) is delivered and enabled in README. The user-authorized live sample completed all five fabrication-bait cases with no_fabrication mean 5/5 and zero case errors; the other four live scenarios remain pending. The local Ollama onboarding smoke also passed. See the [durable completion evidence](2026-10-13-v1-plan-6-completion.md) for exact test names, commits, failed-run diagnoses, runtime outcomes, controller rulings and their costs. The final review lifecycle fix in `edd7b78` passed fresh serial re-verification; controller scoped re-review is pending. Historical draft steps below are superseded by this status and the execution corrections.
 
 ## Execution corrections (2026-10-13)
 

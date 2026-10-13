@@ -78,4 +78,4 @@ Convert the recording:
 ffmpeg -i demo.mp4 -vf "fps=12,scale=960:-1:flags=lanczos" -loop 0 docs/assets/demo.gif
 ```
 
-Keep it under 5 MB, preview the loop, and then uncomment the demo image line in [README.md](README.md) after `docs/assets/demo.gif` exists. Adjust duration or palette if needed to meet the size limit.
+Replace `docs/assets/demo.gif`, keep it under 5 MB, preview the loop, and verify the existing demo image in [README.md](README.md). Adjust duration or palette if needed to meet the size limit.

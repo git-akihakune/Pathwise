@@ -17,7 +17,7 @@ This record accompanies [Plan 6](2026-10-12-v1-plan-6-hardening-and-showcase.md)
 | 9 — docs/attribution | `745d375` | Architecture, extensions, memory, self-hosting, NOTICE, CONTRIBUTING; actual GIF recorded below. |
 | 10 — final audit/validation | `073ebf1`, `13a38d6`; this record/GIF committed together | All eight flows audited; full unit/integration/compose checks pass; final 40/40 E2E pass; actual GIF delivered. |
 
-## Final serial verification
+## Task 10 serial verification (before final review)
 
 | Command | Exit / evidence |
 |---|---|
@@ -33,6 +33,39 @@ Full logs and exact exit records are preserved during execution in `.superpowers
 
 Focused seed test evidence: deliberately mutating persisted settings to `UTC`/`1` produced the expected RED assertion (exit 1); restoring production code and using the existing message `metadata.createdAt` interface produced GREEN (1 file / 7 tests, exit 0). No test timeout or assertion was weakened.
 
+## Final review and focused fix
+
+The independent broad review of `19c21af..ec754c1` requested changes for I1: authenticated Better Auth admin HTTP endpoints could demote the sole admin (`set-role` or `update-user`) or remove another member without Pathwise's lifecycle lock/file/job cleanup. Either demotion let an outsider become admin through the bootstrap exception despite closed registration. M1 identified ambiguous E2E graph wording in this record; M2 identified stale GIF refresh instructions in CONTRIBUTING. This section records the single focused fix wave; the controller owns the subsequent scoped re-review verdict.
+
+`edd7b78` disables `/admin/set-role`, `/admin/update-user` and `/admin/remove-user` at the auth HTTP boundary. Intended core promotion and account deletion remain covered, including shared-lock authorization and concurrent last-admin deletion. Public `/admin/create-user` remains blocked by the existing signup-context hook; a real authenticated HTTP test proves 403 with no new account or credential, so no redundant route disable was added. M1 now states the actual admin dependency/shared-session correction; M2 instructs contributors to replace the GIF and verify the enabled README preview.
+
+TDD evidence: before changing auth, the four real-HTTP lifecycle tests produced three expected failures and one pass (exit 1). Both role routes returned 200, changed the sole admin to `user`, reduced admin count to zero and allowed an outsider to bootstrap despite closed registration. Removal returned 200 and deleted the member's identity, credential, session and document rows while leaving their file and pending pg-boss job. Public creation was already blocked. With the three disabled paths, focused verification passed 7 integration files / 49 tests and 3 unit files / 20 tests (policy, rate limits and docs), exit 0. The new boundary tests use genuine cookie sessions, confirm the administrator through HTTP, send a valid same-origin header, and assert preserved rows/files/pending work and closed-registration denial.
+
+After the auth mutation, required full checks ran serially in this order:
+
+| Command | Exit / final-fix evidence |
+|---|---|
+| `pnpm lint` | 0; 450 files, the same four pre-existing non-null assertion warnings. |
+| `pnpm typecheck` | 0; core, web, worker, evals, scripts/taxonomy and scripts. |
+| `pnpm test` | 0; 54 files / 424 tests, zero failures, 34.96 s. |
+| `pnpm test:int` | 0; 56 files / 422 tests, zero failures, 182.01 s. |
+| `bash scripts/compose-smoke.sh` | 0; `SMOKE OK`; production web/worker build, zero-config startup, idempotent init/secrets/taxonomy/demo checks, scoped teardown. Same three pre-existing Turbopack filesystem-tracing warnings as Task 10. |
+| `pnpm e2e` | 0; unchanged root configuration, fresh mock compose stack, 40 tests passed, zero failures/skips, 24.7 s, scoped teardown. |
+
+Exact logs and exits for this wave are under `.superpowers/sdd/2026-10-12-v1-plan-6-hardening-and-showcase/`: `final-fix-red-projected.log`, `final-fix-focused-integration.log`, `final-fix-focused-unit.log`, `final-fix-lint.log`, `final-fix-typecheck.log`, `final-fix-unit.log`, `final-fix-integration.log`, `final-fix-compose-smoke.log`, `final-fix-e2e.log`, and `final-fix-exits.txt`. The initial RED log was also retained; the repeat RED projected credentials/sessions without hashes or tokens in assertion output. All fixture accounts were synthetic and isolated in Testcontainers. Dev database/secrets were preserved; CI is unchanged. No paid/live evaluation or GIF recapture was needed or run. Runtime code stayed at `edd7b78` throughout the successful full checks; remaining edits record documentation/evidence only.
+
+Ruling: Disable unused public Better Auth admin mutation routes that bypass core lifecycle services — final review proves sole-admin demotion and deletion without job/file cleanup are reachable — cost if wrong: integrations calling these unused endpoints receive 404; intended core-backed promotion/deletion remain available.
+
+The final review's seven declined-scope adjudications remain explicit:
+
+1. Remaining 20 live cases and other provider/model quality: accepted as unperformed scope. Only the authorized five-case sample completed; those scores do not establish universal quality.
+2. Active worker interruption and atomic claim/cancel: accepted public pg-boss limitation. The selection race is documented; handler interruption is not promised.
+3. Durable post-commit cleanup recovery: accepted surfaced operational-failure scope. A tombstone/retry protocol was not requested; independent cleanup is attempted. I1's normal-path public bypass still required this fix.
+4. Operator backups, downloaded exports and external models: outside the local deletion boundary; policies are documented without asserting universal erasure.
+5. Instance invite/transient-auth retention: accepted current `user_id` export contract and auth credential exclusion. A broader retention model is not designed.
+6. Large-instance export/queue capacity: no load benchmark or capacity guarantee. Ordinary-use correctness was reviewed; high-volume design remains unproven.
+7. Unchanged Plans 1–5 and unrelated auth features: accepted scoped Plan 6 review. The cross-task auth lifecycle bypass was traced and fixed; no unrelated comprehensive audit was requested.
+
 ## E2E coverage audit
 
 | Flow | Actual spec / test | Root project dependencies |
@@ -46,7 +79,7 @@ Focused seed test evidence: deliberately mutating persisted settings to `UTC`/`1
 | Delete account / can no longer sign in | `e2e/account.spec.ts` — `a user deletes their account and can no longer sign in` | account ← auth + domain-setup |
 | Admin job-queue health / source queue / no dead letters | `e2e/admin.spec.ts` — `admin sees job queue health` | admin ← auth + domain-setup |
 
-Also retain account anonymous export / last-admin guard, instance-provider inheritance, auth, profile, stories, Today and the shared domain setup test. Existing tests already drive each required flow, so no redundant E2E tests or project changes were added.
+Also retain account anonymous export / last-admin guard, instance-provider inheritance, auth, profile, stories, Today and the shared domain setup test. Existing flow tests needed no duplicate coverage. Final validation added the documented admin dependency on domain-setup and shared ADA_STATE session reuse for admin/instance-provider tests.
 
 ## Live model outcomes and limits
 
