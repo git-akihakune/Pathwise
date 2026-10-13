@@ -1,5 +1,9 @@
 # Pathwise v1 · Plan 5: Workflows & Check-ins Implementation Plan
 
+**Status:** Complete · 2026-10-13.
+
+**Progress:** Tasks 1–10 were previously delivered; Tasks 11–13 are now complete. Final validation: lint and typecheck passed, unit 334/334, integration 375/375, whole E2E 35/35 with no skips, and compose smoke `SMOKE OK`. The final E2E fixes preserve both signed-out return-link redirects with one sign-in and verify the upcoming schedule before check-in completion. The minor expiry-time lock-order concern remains deferred.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A new user can go through onboarding (connect a provider, upload or paste a CV, review what was extracted, a short intake conversation, and a "Here's what I heard" summary they confirm). Every week after that, a check-in opens on time in their timezone, by email with a calendar invite when SMTP is configured and in-app always. It walks them through wins, actions, blockers, energy and next week, then saves a summary to memory. The Today screen ties it all together.
@@ -1930,7 +1934,7 @@ e2e/{onboarding.spec.ts,checkin.spec.ts,today.spec.ts}  e2e/admin.spec.ts (modif
   Jobs (default `standard` policy; idempotency comes from the DB): `checkin.dispatch` (`cron: "*/15 * * * *"`, payload `{}`; the one user-less job), `checkin.prepare` (`{ userId, checkinId }`), `checkin.followup` (`{ userId, checkinId, stage }`). Each handler builds `{ ...deps, mailer: mailerFor(deps.config) }`.
   CLI: `pathwise checkin start <email>`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
   ```ts
   // packages/core/src/services/checkins/jobs.int.test.ts
@@ -2056,12 +2060,12 @@ e2e/{onboarding.spec.ts,checkin.spec.ts,today.spec.ts}  e2e/admin.spec.ts (modif
 
   In `apps/worker/src/cli.test.ts`, extend the usage assertion with `expect(out.join("\n")).toMatch(/checkin start <email>/);`.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
   Run: `pnpm test packages/core/src/jobs apps/worker && pnpm test:int packages/core/src/services/checkins/jobs`
   Expected: FAIL. `jobs.ts` doesn't exist.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
   - **`dispatchCheckins`:**
     - Select users with an active plan, left-joined to `user_settings`; a missing row means the defaults (enabled, Sunday, 18:00, UTC).
@@ -2083,12 +2087,12 @@ e2e/{onboarding.spec.ts,checkin.spec.ts,today.spec.ts}  e2e/admin.spec.ts (modif
     - Implementation: load config and DB, start `PgBoss`, build `{ db, config, queue: pgBossQueue(boss), mailer: mailerFor(config) }`, and look up the user by normalized email (unknown email → stderr, exit 1).
     - Print `Opened check-in for <email> (week of <weekOf>)` (exit 0) or `A check-in for the week of <weekOf> already exists.` (exit 1). Stop boss and the pool in `finally`.
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
   Run: `pnpm test && pnpm test:int packages/core/src/services/checkins`
   Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   ```bash
   git add -A
@@ -2118,7 +2122,7 @@ e2e/{onboarding.spec.ts,checkin.spec.ts,today.spec.ts}  e2e/admin.spec.ts (modif
   export function getToday(db: DbOrTx, userId: string, now?: Date): Promise<TodayView>;
   ```
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
   ```ts
   // packages/core/src/services/today/service.int.test.ts
@@ -2191,12 +2195,12 @@ e2e/{onboarding.spec.ts,checkin.spec.ts,today.spec.ts}  e2e/admin.spec.ts (modif
   });
   ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
   Run: `pnpm test:int packages/core/src/services/today`
   Expected: FAIL. Module not found.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
   - **`getToday`:**
     - `tz = effectiveTimezone(settings)`, `weekOf = mondayOf(now, tz)`, `actions = actionsForWeek(db, userId, weekOf)` (empty without a plan).
@@ -2222,12 +2226,12 @@ e2e/{onboarding.spec.ts,checkin.spec.ts,today.spec.ts}  e2e/admin.spec.ts (modif
     4. "Waiting for your approval" (only when there are pending proposals): `ProposalCard` each.
     5. Plan 3's `PendingMemoryList` (already on Today since Plan 4) (its own card, heading "New things I learned", nothing when empty), now fed from `TodayView.pendingMemories`.
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
   Run: `pnpm test:int packages/core/src/services/today && pnpm e2e`
   Expected: PASS (all specs).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   ```bash
   git add -A
@@ -2250,7 +2254,7 @@ e2e/{onboarding.spec.ts,checkin.spec.ts,today.spec.ts}  e2e/admin.spec.ts (modif
   - context provider `checkin.week` (`maxTokens: 600`). It renders `- (id: <uuid>) <title> [<status>]` per action of the open run's week, plus `Energy: n/5` once recorded. The ids let the model (and mock fixtures) reference actions.
   - merge order: inside a workflow Plan 4 selects `["core", ...step.skills]` and merges tools in that order, with later skills winning. `replan` lists `["planning", "checkin"]`, so the capped tool wins.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
   ```ts
   // packages/core/src/agent/skills/checkin.int.test.ts
@@ -2365,12 +2369,12 @@ e2e/{onboarding.spec.ts,checkin.spec.ts,today.spec.ts}  e2e/admin.spec.ts (modif
 
   `scripts/e2e.sh` already exports `COMPOSE_PROJECT_NAME=pathwise-e2e`, so `docker compose exec` reaches the test stack.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
   Run: `pnpm test:int packages/core/src/agent/skills/checkin && pnpm e2e e2e/checkin.spec.ts`
   Expected: FAIL. The skill isn't registered, `/checkin` doesn't exist, and sign-in ignores `next` until the page exists.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
   - **Checkin skill:**
     - `promptFragment`: "You are running the user's weekly check-in. Be brief and warm, ask one thing at a time, and never guilt-trip about unfinished actions. Use the action ids listed in this week's actions."
@@ -2394,12 +2398,12 @@ e2e/{onboarding.spec.ts,checkin.spec.ts,today.spec.ts}  e2e/admin.spec.ts (modif
 
   - **`actions.ts`:** `advanceCheckinAction`, `retryCheckinAction`, `refreshCheckinAction`, `saveEnergyAction(prev, formData)`. Each calls `requireSession` and then core, ending with `revalidatePath("/checkin")`.
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
   Run: `pnpm lint && pnpm typecheck && pnpm test && pnpm test:int && pnpm e2e && bash scripts/compose-smoke.sh`
   Expected: all PASS, `SMOKE OK`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   ```bash
   git add -A
