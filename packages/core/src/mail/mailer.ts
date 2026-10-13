@@ -71,3 +71,17 @@ export function mailerFor(config: Pick<AppConfig, "smtp">): Mailer {
   if (!memo || memo.key !== key) memo = { key, mailer: createMailer(config) };
   return memo.mailer;
 }
+
+/** Content-free fields of a send failure for logs. Messages can hold addresses or tokens, so never log them. */
+export function mailErrorFields(e: unknown): {
+  name: string;
+  code?: string;
+  responseCode?: number;
+} {
+  const x = (e ?? {}) as { code?: unknown; responseCode?: unknown };
+  return {
+    name: e instanceof Error ? e.name : "unknown",
+    ...(typeof x.code === "string" && { code: x.code }),
+    ...(typeof x.responseCode === "number" && { responseCode: x.responseCode }),
+  };
+}

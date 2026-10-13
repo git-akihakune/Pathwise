@@ -8,7 +8,12 @@ import { type Db, schema } from "../db";
 import { getInstanceSettings } from "../instance";
 import { findUsableInvite, markInviteUsed, normalizeEmail } from "../invites";
 import { createLogger } from "../logger";
-import { type Mailer, renderPasswordResetEmail, renderVerificationEmail } from "../mail";
+import {
+  type Mailer,
+  mailErrorFields,
+  renderPasswordResetEmail,
+  renderVerificationEmail,
+} from "../mail";
 import { evaluateSignup, type InviteCheck } from "./policy";
 import { getSignupContext } from "./signup-context";
 
@@ -36,9 +41,7 @@ export function createAuth(deps: {
     if (!mailer?.enabled) return;
     void rendered
       .then((r) => mailer.send({ to, ...r }))
-      .catch((err) =>
-        log.error({ err: err instanceof Error ? err.name : "error" }, "auth email failed"),
-      );
+      .catch((err) => log.error({ ...mailErrorFields(err) }, "auth email failed"));
   };
   return betterAuth({
     baseURL: config.appUrl,
@@ -52,6 +55,7 @@ export function createAuth(deps: {
       enabled: true,
       minPasswordLength: MIN_PASSWORD_LENGTH,
       autoSignIn: true,
+      revokeSessionsOnPasswordReset: true,
       ...(mailer?.enabled && {
         sendResetPassword: async ({ user, url }) =>
           fire(user.email, renderPasswordResetEmail({ name: user.name, url })),
@@ -59,9 +63,9 @@ export function createAuth(deps: {
     },
     ...(mailer?.enabled && {
       // Not required (requireEmailVerification unset): adding SMTP later must not lock anyone out.
+      // No autoSignInAfterVerification: an email link must never log anyone in (spec §8).
       emailVerification: {
         sendOnSignUp: true,
-        autoSignInAfterVerification: true,
         sendVerificationEmail: async ({ user, url }) =>
           fire(user.email, renderVerificationEmail({ name: user.name, url })),
       },

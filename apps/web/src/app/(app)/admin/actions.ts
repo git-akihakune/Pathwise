@@ -2,7 +2,8 @@
 
 import { inviteUser, revokeInvite, setSafetyResources, setSignupMode } from "@pathwise/core/admin";
 import type { SignupMode } from "@pathwise/core/instance";
-import { renderInviteEmail } from "@pathwise/core/mail";
+import { createLogger } from "@pathwise/core/logger";
+import { mailErrorFields, renderInviteEmail } from "@pathwise/core/mail";
 import {
   getInstanceProviderConfig,
   setInstanceProviderConfig,
@@ -14,6 +15,8 @@ import { parseProviderInput } from "@/lib/provider-input";
 import { getServer } from "@/lib/server";
 import { requireAdmin } from "@/lib/session";
 import type { ProviderFormState } from "../settings/actions";
+
+const log = createLogger("admin");
 
 export type InviteState =
   | { error?: string; link?: string; email?: string; emailed?: boolean; emailFailed?: boolean }
@@ -46,7 +49,8 @@ export async function createInviteAction(
       ...(await renderInviteEmail({ inviterName: name, url: link })),
     });
     return { link, email, emailed: true };
-  } catch {
+  } catch (e) {
+    log.error({ ...mailErrorFields(e), userId }, "invite email failed");
     return { link, email, emailFailed: true };
   }
 }
