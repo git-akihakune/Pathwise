@@ -51,9 +51,15 @@ export function createAuth(deps: {
     baseURL: config.appUrl,
     secret: config.betterAuthSecret,
     trustedOrigins: [config.appUrl],
-    // Sign-in/up go through the app's server actions (rate limits, sign-up policy); this only
-    // closes the public HTTP routes, direct auth.api calls are unaffected.
-    disabledPaths: ["/sign-in/email", "/sign-up/email"],
+    // Sign-in/up and account/admin lifecycle changes go through core-backed app actions.
+    // Close public HTTP bypasses; direct auth.api calls are unaffected.
+    disabledPaths: [
+      "/sign-in/email",
+      "/sign-up/email",
+      "/admin/set-role",
+      "/admin/update-user",
+      "/admin/remove-user",
+    ],
     database: drizzleAdapter(db, { provider: "pg", schema }),
     emailAndPassword: {
       enabled: true,
