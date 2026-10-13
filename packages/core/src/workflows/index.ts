@@ -1,5 +1,6 @@
 import { WORKFLOW_DEFINITIONS } from "./definitions";
 
+export * from "./checkin";
 export { WORKFLOW_DEFINITIONS } from "./definitions";
 export { createWorkflowEngine, resolveNextStep, type WorkflowEngine } from "./engine";
 export * from "./instance";

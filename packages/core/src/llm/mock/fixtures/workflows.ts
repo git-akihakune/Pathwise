@@ -47,3 +47,10 @@ registerMockFixture("extract.document", () => ({ json: MOCK_EXTRACTION }));
 registerMockFixture("onboarding.snapshot", () => ({
   text: "Here's what I heard: you're an experienced nurse who values autonomy and wants to move toward healthcare data.",
 }));
+
+registerMockFixture("checkin.summarize", () => ({
+  json: {
+    summary: "Steady week: one action done, energy low, next week kept light.",
+    memories: [],
+  },
+}));
