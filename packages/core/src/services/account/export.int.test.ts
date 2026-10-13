@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -36,7 +37,9 @@ async function addDocument(filename: string, bytes?: string, owner = userId) {
 
 async function exported() {
   const zip = unzipSync(await exportUserData(db, userId, { filesDir, now: NOW }));
-  const json = strFromU8(zip["pathwise-export.json"]!);
+  const bundle = zip["pathwise-export.json"];
+  assert(bundle, "The ZIP must contain pathwise-export.json.");
+  const json = strFromU8(bundle);
   const data = JSON.parse(json) as {
     meta: { schemaVersion: number; missingFiles: string[] };
     tables: Record<string, Record<string, unknown>[]>;
@@ -66,7 +69,9 @@ describe("exportUserData", () => {
     expect(data.tables.user).toEqual([
       expect.objectContaining({ email: "demo@pathwise.local", role: "user" }),
     ]);
-    expect(Object.keys(data.tables.user![0]!).sort()).toEqual([
+    const user = data.tables.user?.[0];
+    assert(user, "The export must contain the user's identity row.");
+    expect(Object.keys(user).sort()).toEqual([
       "createdAt",
       "email",
       "emailVerified",
@@ -77,7 +82,9 @@ describe("exportUserData", () => {
     expect(data.tables.experiences).toHaveLength(3);
     expect(data.tables.stories).toHaveLength(2);
     expect(data.tables.documents).toHaveLength(1);
-    expect(strFromU8(zip["files/Maya CV.pdf"]!)).toBe("CV BYTES");
+    const original = zip["files/Maya CV.pdf"];
+    assert(original, "The ZIP must contain the uploaded CV.");
+    expect(strFromU8(original)).toBe("CV BYTES");
   });
 
   it("exports every user_id table unless credentials are explicitly excluded", async () => {
@@ -180,7 +187,9 @@ describe("exportUserData", () => {
       "files/file (3)",
       "files/r_sum__.pdf",
     ]);
-    expect(strFromU8(zip["files/cv.pdf"]!)).toBe("../cv.pdf");
+    const original = zip["files/cv.pdf"];
+    assert(original, "The ZIP must contain the first sanitized CV.");
+    expect(strFromU8(original)).toBe("../cv.pdf");
     expect(Object.values(zip)).toHaveLength(9);
   });
 
@@ -223,9 +232,11 @@ describe("exportUserData", () => {
     expect(Object.keys(zip).sort()).toEqual(["files/mine.pdf", "pathwise-export.json"]);
     for (const [name, table] of Object.entries(EXPORT_TABLES)) {
       const columns = getTableColumns(table);
-      const expected = await db.select().from(table).where(eq(columns.userId!, userId));
+      const expected = await db.select().from(table).where(eq(columns.userId, userId));
       expect(data.tables[name], name).toHaveLength(expected.length);
-      for (const row of data.tables[name]!) expect(row.userId, name).toBe(userId);
+      const exportedRows = data.tables[name];
+      assert(exportedRows, `The export must contain the ${name} table.`);
+      for (const row of exportedRows) expect(row.userId, name).toBe(userId);
     }
   });
 

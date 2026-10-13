@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { eq, getTableColumns, sql } from "drizzle-orm";
@@ -6,7 +7,7 @@ import { strToU8, zipSync } from "fflate";
 import { type Db, schema } from "../../db";
 import { NotFoundError } from "../../errors";
 
-export const EXPORT_TABLES: Record<string, PgTable> = {
+export const EXPORT_TABLES = {
   user_settings: schema.userSettings,
   provider_configs: schema.providerConfigs,
   llm_usage: schema.llmUsage,
@@ -26,7 +27,7 @@ export const EXPORT_TABLES: Record<string, PgTable> = {
   workflow_runs: schema.workflowRuns,
   checkins: schema.checkins,
   documents: schema.documents,
-};
+} satisfies Record<string, PgTable>;
 
 export const EXPORT_EXCLUDED_TABLES: Record<string, string> = {
   session: "auth tokens",
@@ -64,13 +65,17 @@ export async function exportUserData(
     const included = Object.fromEntries(
       Object.entries(columns).filter(([, column]) => !EXPORT_OMITTED_COLUMNS.includes(column.name)),
     );
-    tables[name] = await db.select(included).from(table).where(eq(columns.userId!, userId));
+    tables[name] = await db.select(included).from(table).where(eq(columns.userId, userId));
   }
   const { rows } = await db.execute<{ count: number }>(sql`
     select count(*)::int from drizzle.__drizzle_migrations`);
+  const migrationCount = rows[0];
+  assert(migrationCount, "Migration count query returned no row.");
+  const documents = tables.documents;
+  assert(documents, "Documents table is missing from the export.");
   const missingFiles: string[] = [];
   const files: Record<string, Uint8Array> = {};
-  for (const document of tables.documents!) {
+  for (const document of documents) {
     const { filename, storagePath } = document as { filename: string; storagePath: string | null };
     if (storagePath === null) continue;
     // Same ownership and path contract as readDocumentBytes; never read another user's upload.
@@ -101,7 +106,7 @@ export async function exportUserData(
     meta: {
       app: "pathwise",
       formatVersion: 1,
-      schemaVersion: rows[0]!.count,
+      schemaVersion: migrationCount.count,
       exportedAt: (opts.now ?? new Date()).toISOString(),
       userId,
       missingFiles,

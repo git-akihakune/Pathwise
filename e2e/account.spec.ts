@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { strFromU8, unzipSync } from "fflate";
@@ -26,8 +27,12 @@ test("an invited user downloads their own data", async ({ page, browser }) => {
     expect(response.headers()["content-type"]).toBe("application/zip");
     expect(response.headers()["cache-control"]).toBe("no-store");
     expect(download.suggestedFilename()).toMatch(/^pathwise-export-\d{4}-\d{2}-\d{2}\.zip$/);
-    const zip = unzipSync(readFileSync((await download.path())!));
-    const data = JSON.parse(strFromU8(zip["pathwise-export.json"]!));
+    const downloadPath = await download.path();
+    assert(downloadPath, "The download must be saved locally.");
+    const zip = unzipSync(readFileSync(downloadPath));
+    const bundle = zip["pathwise-export.json"];
+    assert(bundle, "The ZIP must contain pathwise-export.json.");
+    const data = JSON.parse(strFromU8(bundle));
     expect(data.tables.user).toEqual([expect.objectContaining({ email: carol.email })]);
     expect(JSON.stringify(data)).not.toMatch(/encryptedKey|ada@example.com|"password"|"token"/);
     expect(data.tables).not.toHaveProperty("account");
