@@ -13,7 +13,7 @@ export type SignUpResult =
   | { ok: true; userId: string; role: "admin" | "user" }
   | { ok: false; reason: SignUpFailure };
 
-const SIGNUP_LOCK_KEY = 0x50415448;
+export const ADMIN_LOCK_KEY = 0x41444d4e;
 
 const inputSchema = z.object({
   name: z.string().min(1).max(100),
@@ -64,7 +64,7 @@ export async function signUp(
   return serialise(async () => {
     try {
       const userId = await db.transaction(async (tx) => {
-        await tx.execute(sql`select pg_advisory_xact_lock(${SIGNUP_LOCK_KEY})`);
+        await tx.execute(sql`select pg_advisory_xact_lock(${ADMIN_LOCK_KEY})`);
         const res = await runInSignupContext({ inviteToken: input.inviteToken }, () =>
           auth.api.signUpEmail({
             body: { name, email: normalizeEmail(email), password },

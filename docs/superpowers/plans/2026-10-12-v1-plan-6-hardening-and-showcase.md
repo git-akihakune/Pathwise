@@ -14,6 +14,17 @@
 
 > Drafted before Plan 5 was implemented. Before starting, check every *Consumes* signature against the merged code and fix the plan where they differ. In particular, check: the Plan 3/4/5 service signatures used by `applyPersona`; that `appendMessage` accepts `createdAt` and `getOrStartSession` accepts `now` (Plan 4); that `documents.storage_path` is `<userId>/<uuid>` relative to `FILES_DIR` (Plan 5); that the web process reaches pg-boss through Plan 4's `getBoss()` in `apps/web/src/lib/jobs.ts`; that Plan 5's Today shows a "Set up your coach" card until `recordCompletedOnboarding` (or a real onboarding) completes; and the `InitReport` fields Plans 3–5 added.
 
+## Execution corrections (2026-10-13)
+
+The audit of the merged Plans 1–5 found these corrections. They override the draft task text below:
+
+- Task 1: create the credential user and apply the complete persona, including action status updates, in one transaction under a per-email advisory lock. An existing account with no active plan is a collision: refuse it without deleting any data. Replace the destructive partial-account recovery test with collision preservation and rollback tests. Newly interrupted seeds roll back completely. `createCredentialUser`, `applyPersona`, and `countAdmins` accept `DbOrTx`.
+- Tasks 1 and 5: export `ADMIN_LOCK_KEY = 0x41444d4e` from auth and use it for signup, admin promotion, and deletion. Promotion checks the actor within that transaction. Account deletion re-exports the constant for its specified interface.
+- Tasks 3–5 and 10: use the existing `signIn`, `ADA`, `ADA_STATE`, and `domain-setup` E2E helpers/project where applicable, preserving the shared login state and current project dependencies.
+- Task 4: also omit the derived `summary_search` column. Existing `fflate` dependencies already satisfy the requirement.
+- Task 8: taxonomy URL is `../../../data/taxonomy` relative to `evals/src/run.ts`. Test the main instance provider before using it; an untested config cannot resolve. Use an admin harness judge for custom endpoints. Collect tool calls from stream/message parts, since `TurnResult` has no `toolCalls` member.
+- Task 9: `registerSkill` exists in `agent/registry.ts`; the networking example must explain extending `SkillId` and registering with the built-in skills. The bundled manifest has `sources.esco = null`; describe the absent ESCO bundle truthfully while retaining ESCO attribution and import guidance.
+
 ## Spec gaps resolved
 
 1. **The demo user must not take bootstrap admin.** §4.5 says the first person to register becomes admin, and §12 says `SEED_DEMO=true` seeds a user during `init`. Both are true only if bootstrap means "no admin exists", not "no user exists". `evaluateSignup` takes `adminCount`, and the sign-up page's "Create the admin account" check uses `countAdmins`. The demo user is a plain `user`.

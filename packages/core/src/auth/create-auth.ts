@@ -4,7 +4,7 @@ import { APIError } from "better-auth/api";
 import { admin } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import type { AppConfig } from "../config";
-import { type Db, schema } from "../db";
+import { type Db, type DbOrTx, schema } from "../db";
 import { getInstanceSettings } from "../instance";
 import { findUsableInvite, markInviteUsed, normalizeEmail } from "../invites";
 import { createLogger } from "../logger";
@@ -21,6 +21,10 @@ export const MIN_PASSWORD_LENGTH = 12;
 
 export async function countUsers(db: Db): Promise<number> {
   return db.$count(schema.user);
+}
+
+export async function countAdmins(db: DbOrTx): Promise<number> {
+  return db.$count(schema.user, eq(schema.user.role, "admin"));
 }
 
 export async function userExists(db: Db, email: string): Promise<boolean> {
@@ -88,7 +92,7 @@ export function createAuth(deps: {
               inviteId = found?.id;
             }
             const decision = evaluateSignup({
-              userCount: await countUsers(db),
+              adminCount: await countAdmins(db),
               mode: (await getInstanceSettings(db)).signupMode,
               invite,
             });

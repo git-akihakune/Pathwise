@@ -1,4 +1,4 @@
-import { countUsers } from "@pathwise/core/auth";
+import { countAdmins } from "@pathwise/core/auth";
 import { getInstanceSettings } from "@pathwise/core/instance";
 import Link from "next/link";
 import { connection } from "next/server";
@@ -11,7 +11,7 @@ import { signUpAction } from "../actions";
 export default async function SignUpPage() {
   await connection();
   const { db, config } = getServer();
-  const first = (await countUsers(db)) === 0;
+  const first = (await countAdmins(db)) === 0;
   const { signupMode } = await getInstanceSettings(db);
   const showForm = first || signupMode === "open";
 
