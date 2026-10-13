@@ -42,6 +42,7 @@ export async function getOnboardingState(db: DbOrTx, userId: string): Promise<On
 
 /** Abandons the open run, or records an abandoned one so Today stops asking. */
 export async function skipOnboarding(deps: WorkflowDeps, userId: string): Promise<void> {
+  if ((await latestRun(deps.db, userId, "onboarding"))?.status === "completed") return;
   const open = await getActiveRun(deps.db, userId, "onboarding");
   if (open) return abandonRun(deps.db, userId, open.id);
   await deps.db

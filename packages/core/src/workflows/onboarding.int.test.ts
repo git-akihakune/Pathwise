@@ -184,6 +184,20 @@ describe("onboarding", () => {
     expect(latest?.messages.map(text)).toEqual([DIRECTION_OPENER]);
     expect(await getOnboardingState(db, "u1")).toBe("completed");
   });
+  it("rejects a correction over 1000 characters and creates no memory", async () => {
+    await seedProvider(db, "u1");
+    const r = await atIntake();
+    await advance(deps, "u1", r.id, { stepId: "intake", skip: true });
+    await expect(
+      advance(deps, "u1", r.id, { stepId: "confirm", uiResult: { correction: "x".repeat(1001) } }),
+    ).rejects.toThrow();
+    expect(await listMemory(db, "u1")).toEqual([]);
+  });
+  it("skipping after a completed onboarding changes nothing", async () => {
+    await recordCompletedOnboarding(db, "u1");
+    await skipOnboarding(deps, "u1");
+    expect(await getOnboardingState(db, "u1")).toBe("completed");
+  });
   it("reports skipped and lets the user start again", async () => {
     expect(await getOnboardingState(db, "u1")).toBe("not_started");
     await skipOnboarding(deps, "u1");
