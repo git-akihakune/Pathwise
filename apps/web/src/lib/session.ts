@@ -1,6 +1,7 @@
 import "server-only";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { safeNext } from "./safe-next";
 import { getServer, type Server } from "./server";
 
 export type SessionUser = {
@@ -23,7 +24,10 @@ export async function requireSession(): Promise<SessionUser> {
   // headers() first: it opts the route into dynamic rendering before getServer() needs env/DB.
   const h = await headers();
   const session = await getServer().auth.api.getSession({ headers: h });
-  if (!session) redirect("/sign-in");
+  if (!session) {
+    const next = safeNext(h.get("x-pathwise-return-to"));
+    redirect(next === "/" ? "/sign-in" : `/sign-in?next=${encodeURIComponent(next)}`);
+  }
   return toSessionUser(session);
 }
 

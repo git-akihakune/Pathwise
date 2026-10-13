@@ -11,7 +11,10 @@ export function proxy(request: NextRequest) {
     if (pathname !== "/") target.searchParams.set("next", pathname + search);
     return NextResponse.redirect(target);
   }
-  return NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  // Overwrite any client value: only the proxy may choose the return path used by page/layout auth.
+  requestHeaders.set("x-pathwise-return-to", request.nextUrl.pathname + request.nextUrl.search);
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {
