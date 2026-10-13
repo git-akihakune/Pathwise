@@ -1,7 +1,7 @@
 # Pathwise
 Your AI-assisted career coach
 
-<!-- ![Pathwise demo](docs/assets/demo.gif) — recorded per CONTRIBUTING.md -->
+![Pathwise demo](docs/assets/demo.gif)
 
 - One coach that remembers your background, values, constraints, and goals.
 - Career paths grounded in occupational data, with skill gaps and practical routes.

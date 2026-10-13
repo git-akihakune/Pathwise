@@ -14,6 +14,10 @@
 
 > Drafted before Plan 5 was implemented. Before starting, check every *Consumes* signature against the merged code and fix the plan where they differ. In particular, check: the Plan 3/4/5 service signatures used by `applyPersona`; that `appendMessage` accepts `createdAt` and `getOrStartSession` accepts `now` (Plan 4); that `documents.storage_path` is `<userId>/<uuid>` relative to `FILES_DIR` (Plan 5); that the web process reaches pg-boss through Plan 4's `getBoss()` in `apps/web/src/lib/jobs.ts`; that Plan 5's Today shows a "Set up your coach" card until `recordCompletedOnboarding` (or a real onboarding) completes; and the `InitReport` fields Plans 3–5 added.
 
+## Completion status (2026-10-13)
+
+Tasks 1–10 are implemented and verified. Final commands passed: lint (four pre-existing warnings), typecheck, 424 unit tests, 418 integration tests, fresh compose smoke (`SMOKE OK`), and all 40 mock E2E tests. The actual [demo GIF](../../assets/demo.gif) is delivered and enabled in README. The user-authorized live sample completed all five fabrication-bait cases with no_fabrication mean 5/5 and zero case errors; the other four live scenarios remain pending. The local Ollama onboarding smoke also passed. See the [durable completion evidence](2026-10-13-v1-plan-6-completion.md) for exact test names, commits, failed-run diagnoses, runtime outcomes, controller rulings and their costs. Historical draft steps below are superseded by this status and the execution corrections.
+
 ## Execution corrections (2026-10-13)
 
 The audit of the merged Plans 1–5 found these corrections. They override the draft task text below:
@@ -1411,16 +1415,18 @@ Spec §11 E2E flows and their owners:
 |---|---|---|---|
 | Onboarding | Plan 5 | `e2e/onboarding.spec.ts` | `workflows` (`coach`) |
 | Chat → approval card → applied | Plan 4 | `e2e/coach.spec.ts` | `coach` (`settings`) |
-| Plan editing | Plan 3 | `e2e/plan.spec.ts` | `domain` (`auth`) |
+| Plan editing | Plan 3 | `e2e/plan.spec.ts` | `domain` (`domain-setup`) |
 | Check-in flow | Plan 5 | `e2e/checkin.spec.ts` | `workflows` (`coach`) |
-| Settings / provider test (mock) | Plan 2 | `e2e/settings.spec.ts` (+ `e2e/instance-provider.spec.ts`) | `settings` (`admin`), `instance-provider` (`settings`) |
-| Data export | Plan 6 (Task 4) | `e2e/account.spec.ts` | `account` (`auth`) |
-| Account deletion (§6.6) | Plan 6 (Task 5) | `e2e/account.spec.ts` | `account` (`auth`) |
-| Admin job health (§3.5) | Plan 6 (Task 3) | `e2e/admin.spec.ts` | `admin` (`auth`) |
+| Settings / provider test (mock) | Plan 2 | `e2e/settings.spec.ts` (+ `e2e/instance-provider.spec.ts`) | `settings` (`admin`, `domain-setup`), `instance-provider` (`settings`) |
+| Data export | Plan 6 (Task 4) | `e2e/account.spec.ts` | `account` (`auth`, `domain-setup`) |
+| Account deletion (§6.6) | Plan 6 (Task 5) | `e2e/account.spec.ts` | `account` (`auth`, `domain-setup`) |
+| Admin job health (§3.5) | Plan 6 (Task 3) | `e2e/admin.spec.ts` | `admin` (`auth`, `domain-setup`) |
 
-The other specs and projects are `auth.spec.ts` (`auth`), `profile.spec.ts` and `stories.spec.ts` (`domain`, Plan 3) and `today.spec.ts` (`workflows`, Plan 5). The chains are `auth` → `admin` → `settings` → `instance-provider`, `settings` → `coach` → `workflows`, and `auth` → `domain` / `account`.
+Actual passing test names and runtime evidence are recorded in the [completion audit table](2026-10-13-v1-plan-6-completion.md#e2e-coverage-audit).
 
-- [ ] **Step 1: Audit**
+The other specs and projects are `auth.spec.ts` (`auth`), `profile.spec.ts` and `stories.spec.ts` (`domain`, Plan 3) and `today.spec.ts` (`workflows`, Plan 5). The chains are `auth` → `domain-setup` → `admin` → `settings` → `instance-provider`, `settings` → `coach` → `workflows`, and `auth` → `domain-setup` → `domain` / `account`.
+
+- [x] **Step 1: Audit**
 
   For each row, open the spec file the owning plan actually merged (`ls e2e/`, `grep -l` for the flow's key copy) and confirm that it drives the flow end to end in `LLM_MODE=mock`. The criteria, per flow:
   - Onboarding: upload a PDF → review (edit a title) → intake turn → confirm → lands on Coach, edit visible on Profile.
@@ -1431,12 +1437,12 @@ The other specs and projects are `auth.spec.ts` (`auth`), `profile.spec.ts` and 
 
   Record the file and test name in the table above. For any row with no passing test, write it now, following the stated flow and the existing helpers, and add its Playwright project with `dependencies: ["auth"]` (or `["settings"]`, like Plan 4's `coach`, when it needs the mock provider from `ensureMockProvider`).
 
-- [ ] **Step 2: Run the whole verification**
+- [x] **Step 2: Run the whole verification**
 
   Run: `pnpm lint && pnpm typecheck && pnpm test && pnpm test:int && bash scripts/compose-smoke.sh && pnpm e2e`
   Expected: all PASS, `SMOKE OK`, and every row in the table maps to a passing test. `.github/workflows/ci.yml` is unchanged (same three jobs, no keys): `git diff main -- .github/workflows/ci.yml` is empty.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
   ```bash
   git add -A
