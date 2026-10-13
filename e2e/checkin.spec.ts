@@ -17,36 +17,40 @@ test("the check-in schedule can be changed", async ({ page }) => {
   await page.reload();
   await expect(page.getByLabel("Day")).toHaveValue("3");
   await expect(page.getByLabel("Time", { exact: true })).toHaveValue("07:30");
+  await page.goto("/");
+  await expect(page.getByText("Next check-in: Wednesday at 07:30.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Change schedule" })).toHaveAttribute(
+    "href",
+    "/settings",
+  );
 });
 
-for (const staleCookie of [false, true]) {
-  test(`the Start check-in link survives sign-in with ${staleCookie ? "a stale cookie" : "no cookie"}`, async ({
-    browser,
-  }) => {
-    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
-    if (staleCookie) {
-      await context.addCookies([
-        {
-          name: "better-auth.session_token",
-          value: "revoked-session.invalid-signature",
-          url: "http://localhost:3100",
-          httpOnly: true,
-        },
-      ]);
-    }
-    const page = await context.newPage();
-    await page.goto("/checkin");
-    await expect(page).toHaveURL(/\/sign-in\?next=%2Fcheckin$/);
-    await page.getByLabel("Email").fill(ADA.email);
-    await page.getByLabel("Password").fill(ADA.password);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL(/\/checkin$/);
-    await expect(page.getByRole("heading", { name: "Weekly check-in" })).toBeVisible();
-    await expect(page.getByText("No check-in is open right now.")).toBeVisible();
-    await expect(page.getByText(/^Your next check-in is \w+ at \d{2}:\d{2}\.$/)).toBeVisible();
-    await context.close();
-  });
-}
+test("the Start check-in link preserves its return path with no cookie or a stale cookie", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  const page = await context.newPage();
+  await page.goto("/checkin");
+  await expect(page).toHaveURL(/\/sign-in\?next=%2Fcheckin$/);
+  await context.addCookies([
+    {
+      name: "better-auth.session_token",
+      value: "revoked-session.invalid-signature",
+      url: "http://localhost:3100",
+      httpOnly: true,
+    },
+  ]);
+  await page.goto("/checkin");
+  await expect(page).toHaveURL(/\/sign-in\?next=%2Fcheckin$/);
+  await page.getByLabel("Email").fill(ADA.email);
+  await page.getByLabel("Password").fill(ADA.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/checkin$/);
+  await expect(page.getByRole("heading", { name: "Weekly check-in" })).toBeVisible();
+  await expect(page.getByText("No check-in is open right now.")).toBeVisible();
+  await expect(page.getByText(/^Your next check-in is \w+ at \d{2}:\d{2}\.$/)).toBeVisible();
+  await context.close();
+});
 
 test("weekly check-in flow (spec §11)", async ({ page }) => {
   await ensureMockProvider(page);

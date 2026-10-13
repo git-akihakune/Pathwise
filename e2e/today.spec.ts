@@ -1,17 +1,15 @@
 import { expect, test } from "@playwright/test";
 
 // The workflows project uses ADA_STATE from domain-setup.
-test("Today shows the week, check-in schedule and coach note", async ({ page }) => {
+test("Today shows the week, check-in section and coach note", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /^Welcome, / })).toBeVisible();
   for (const name of ["This week", "Weekly check-in", "From your coach"]) {
     await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
   }
-  await expect(page.getByText(/^Next check-in: \w+ at \d{2}:\d{2}\.$/)).toBeVisible();
-  await expect(page.getByRole("link", { name: "Change schedule" })).toHaveAttribute(
-    "href",
-    "/settings",
-  );
+  const coachNote = page.getByRole("region", { name: "From your coach" }).locator("p");
+  await expect(coachNote).toBeVisible();
+  await expect(coachNote).not.toHaveText("");
 });
 
 test("Today action checkboxes save and undo completion", async ({ page }) => {
