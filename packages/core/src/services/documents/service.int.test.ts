@@ -90,6 +90,15 @@ describe("documents", () => {
       createPastedDocument(deps, "u1", { text: "  \n ", kind: "cv" }),
     ).rejects.toMatchObject({ reason: "empty" });
   });
+  it("cleans display names of control and bidi characters without splitting surrogates", async () => {
+    const name = `a\u0085b\u202ec\u2066d\u200fe${"😀".repeat(250)}`;
+    const doc = await uploadDocument(deps, "u1", {
+      filename: name,
+      kind: "cv",
+      bytes: makePdf("x"),
+    });
+    expect(doc.filename).toBe(`abcde${"😀".repeat(195)}`);
+  });
   it("scopes documents to their owner", async () => {
     const doc = await createPastedDocument(deps, "u1", { text: "Jane", kind: "cv" });
     await expect(getDocument(db, "u2", doc.id)).rejects.toBeInstanceOf(NotFoundError);

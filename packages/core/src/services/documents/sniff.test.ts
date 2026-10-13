@@ -22,3 +22,31 @@ it.each([
 ])("%s → %s (Review Focus 3)", (_name, bytes, expected) => {
   expect(sniffMime(bytes)).toBe(expected);
 });
+
+/** PK\x03\x04 + ZIP64 end record claiming 2^32-1 entries + locator + EOCD (102 bytes). */
+function zip64Bomb(): Buffer {
+  const z64 = Buffer.alloc(56);
+  z64.writeUInt32LE(0x06064b50, 0);
+  z64.writeBigUInt64LE(44n, 4);
+  z64.writeBigUInt64LE(0xffffffffn, 24); // entries on this disk
+  z64.writeBigUInt64LE(0xffffffffn, 32); // total entries
+  const loc = Buffer.alloc(20);
+  loc.writeUInt32LE(0x07064b50, 0);
+  loc.writeBigUInt64LE(4n, 8);
+  loc.writeUInt32LE(1, 16);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(0xffff, 8);
+  eocd.writeUInt16LE(0xffff, 10);
+  eocd.writeUInt32LE(0xffffffff, 12);
+  eocd.writeUInt32LE(0xffffffff, 16);
+  return Buffer.concat([Buffer.from([0x50, 0x4b, 3, 4]), z64, loc, eocd]);
+}
+
+it("rejects a ZIP64 entry-count bomb quickly", () => {
+  const bomb = zip64Bomb();
+  expect(bomb.length).toBe(102);
+  const start = performance.now();
+  expect(sniffMime(bomb)).toBeNull();
+  expect(performance.now() - start).toBeLessThan(1000);
+}, 120_000);

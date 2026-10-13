@@ -65,10 +65,14 @@ const toView = (r: Row): DocumentView => ({
 });
 
 function displayName(filename: string): string {
-  const name = basename(filename.replace(/\\/g, "/"))
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters is the point
-    .replace(/[\u0000-\u001f\u007f]/g, "")
-    .slice(0, 200)
+  const name = Array.from(
+    basename(filename.replace(/\\/g, "/"))
+      // Control characters (C0, DEL, C1) and bidi overrides/isolates/marks.
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters is the point
+      .replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, ""),
+  )
+    .slice(0, 200) // by code point, so a surrogate pair is never split
+    .join("")
     .trim();
   return name && name !== "." && name !== ".." ? name : "Document";
 }
