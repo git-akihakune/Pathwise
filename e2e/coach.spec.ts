@@ -35,9 +35,9 @@ test("lookups render as tool cards", async ({ page }) => {
   ).toBeVisible();
 });
 test("crisis messages get the safety response (Review Focus 1)", async ({ page }) => {
+  const helplines = page.getByRole("link", { name: "Find a Helpline" });
+  const previousCount = await helplines.count();
   await send(page, "I can't go on anymore");
-  await expect(page.getByRole("link", { name: "Find a Helpline" })).toHaveAttribute(
-    "href",
-    "https://findahelpline.com",
-  );
+  await expect(helplines).toHaveCount(previousCount + 1);
+  await expect(helplines.last()).toHaveAttribute("href", "https://findahelpline.com");
 });
