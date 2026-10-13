@@ -11,7 +11,7 @@
     "lint": "biome check .",
     "taxonomy:fixture": "tsx test/fixtures/taxonomy/generate.ts",
     "format": "biome check --write .",
-    "typecheck": "pnpm -r typecheck && tsc -p scripts/taxonomy",
+    "typecheck": "pnpm -r typecheck && tsc -p scripts/taxonomy && tsc -p scripts",
     "test": "vitest run --project unit",
     "test:int": "vitest run --project integration",
     "build": "pnpm -r build",
@@ -21,7 +21,8 @@
     "dev:web": "pnpm --filter @pathwise/web dev",
     "e2e": "bash scripts/e2e.sh",
     "dev": "pnpm dev:db && pnpm dev:init && pnpm -w run --parallel \"/^dev:(web|worker)$/\"",
-    "taxonomy:build": "tsx scripts/taxonomy/build.ts"
+    "taxonomy:build": "tsx scripts/taxonomy/build.ts",
+    "smoke:local": "tsx scripts/smoke-local.ts"
   },
   "devDependencies": {
     "@ai-sdk/provider": "4.0.26",
