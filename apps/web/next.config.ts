@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: repoRoot,
   transpilePackages: ["@pathwise/core"],
-  serverExternalPackages: ["pg", "pg-boss"],
+  serverExternalPackages: ["pg", "pg-boss", "unpdf", "mammoth"],
   agentRules: false,
 };
 

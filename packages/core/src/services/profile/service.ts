@@ -47,7 +47,7 @@ export interface Profile {
 export const SOURCES = ["cv", "linkedin", "message", "checkin", "manual"] as const;
 const text = (max: number) => z.string().trim().max(max).nullish();
 const required = (message: string) => z.string().trim().min(1, message).max(200);
-const partialDate = z
+export const partialDate = z
   .string()
   .regex(/^\d{4}(-(0[1-9]|1[0-2])(-(0[1-9]|[12]\d|3[01]))?)?$/, "Use YYYY, YYYY-MM or YYYY-MM-DD.")
   .refine((s) => s.length < 10 || isDate(s), "Use YYYY, YYYY-MM or YYYY-MM-DD.")

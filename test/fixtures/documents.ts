@@ -3,11 +3,12 @@ import { strToU8, zipSync } from "fflate";
 const escapePdf = (s: string) => s.replace(/[\\()]/g, (c) => `\\${c}`);
 
 /** A one-page PDF with correct xref offsets. Empty text gives a text-free page (like a scan). */
-export function makePdf(text: string): Buffer {
+export function makePdf(text: string, opts: { pages?: number } = {}): Buffer {
+  const pages = opts.pages ?? 1;
   const stream = text ? `BT /F1 12 Tf 72 720 Td (${escapePdf(text)}) Tj ET` : "";
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    `<< /Type /Pages /Kids [${Array(pages).fill("3 0 R").join(" ")}] /Count ${pages} >>`,
     "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
     `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
     "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",

@@ -3,6 +3,7 @@ import { curateSession } from "../memory/curator";
 import { embedPending } from "../memory/embed";
 import { refreshSnapshot } from "../memory/snapshot";
 import { summarizeSession } from "../memory/summarize";
+import { documentParseJob } from "./documents";
 import { JOBS } from "./queue";
 import type { AnyJobDefinition, JobDefinition } from "./register";
 import { findMaintenanceWork } from "./tick";
@@ -69,4 +70,5 @@ export const coreJobs: AnyJobDefinition[] = [
   sessionCurate,
   sessionSummarize,
   snapshotRefreshJob,
+  documentParseJob,
 ];

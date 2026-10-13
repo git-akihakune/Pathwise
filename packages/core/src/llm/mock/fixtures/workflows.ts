@@ -7,3 +7,39 @@ export const workflowCompleteFixture = (call: MockCall): MockReply => ({
 });
 
 registerMockFixture("workflow.complete", workflowCompleteFixture);
+
+export const MOCK_EXTRACTION = {
+  experiences: [
+    {
+      title: "Staff Nurse",
+      organization: "City Hospital",
+      startDate: "2018-03",
+      endDate: "present",
+      description: "Ward nurse on a busy surgical unit.",
+      highlights: ["Trained 12 new nurses"],
+    },
+  ],
+  education: [
+    {
+      institution: "University of Leeds",
+      qualification: "BSc",
+      field: "Nursing",
+      startDate: "2014",
+      endDate: "2017",
+    },
+  ],
+  skills: [
+    { name: "Patient care", level: "expert", evidence: null },
+    { name: "Team leadership", level: "working", evidence: "Trained 12 new nurses" },
+  ],
+  memories: [
+    {
+      category: "aspiration",
+      content: "Wants to move into healthcare data work",
+      sensitive: false,
+    },
+  ],
+  stories: [],
+};
+
+registerMockFixture("extract.document", () => ({ json: MOCK_EXTRACTION }));
