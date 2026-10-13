@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, gt, lte } from "drizzle-orm";
 import { type DbOrTx, schema } from "../../db";
 import { NotFoundError } from "../../errors";
 import { JOBS, type JobDeps } from "../../jobs/queue";
@@ -73,35 +73,61 @@ export async function dispatchCheckins(
         checkinTime: u.time ?? "18:00",
       };
       const dueAt = computeDueAt(settings, now);
-      if (dueAt.getTime() > now.getTime()) continue;
-      const weekOf = checkinWeekOf(dueAt, settings.timezone ?? "UTC");
-      let checkin = await createScheduledCheckin(deps.db, u.userId, {
-        weekOf,
-        dueAt,
-      });
-      if (checkin) {
-        created++;
-      } else {
-        checkin = await getCheckinForWeek(deps.db, u.userId, weekOf);
-        // Recover failed enqueues or exhausted prepare retries on a later dispatch tick.
-        if (
-          checkin?.status !== "scheduled" ||
-          now.getTime() - checkin.dueAt.getTime() < 5 * 60_000
-        ) {
+      const inserted =
+        dueAt.getTime() <= now.getTime()
+          ? await createScheduledCheckin(deps.db, u.userId, {
+              weekOf: checkinWeekOf(dueAt, settings.timezone ?? "UTC"),
+              dueAt,
+            })
+          : null;
+      if (inserted) created++;
+      // Recovery also runs before this week's due time, including after local Monday.
+      const scheduled = await deps.db
+        .select()
+        .from(schema.checkins)
+        .where(
+          and(
+            eq(schema.checkins.userId, u.userId),
+            eq(schema.checkins.status, "scheduled"),
+            lte(schema.checkins.dueAt, now),
+          ),
+        );
+      for (const checkin of scheduled) {
+        if (checkin.id !== inserted?.id && now.getTime() - checkin.dueAt.getTime() < 5 * 60_000)
+          continue;
+        if (await hasNewerCheckin(deps.db, u.userId, checkin.weekOf)) {
+          await missCheckinAndAbandon(deps.db, u.userId, checkin.id);
           continue;
         }
+        await deps.queue.send(
+          JOBS.checkinPrepare,
+          { userId: u.userId, checkinId: checkin.id },
+          { singletonKey: `${JOBS.checkinPrepare}:${checkin.id}` },
+        );
       }
-      await deps.queue.send(
-        JOBS.checkinPrepare,
-        { userId: u.userId, checkinId: checkin.id },
-        { singletonKey: `${JOBS.checkinPrepare}:${checkin.id}` },
-      );
     } catch (err) {
       // Content-free; the next 15-minute tick retries the other users regardless.
       log.error({ userId: u.userId, err: mailErrorFields(err).name }, "dispatch failed");
     }
   }
   return { created };
+}
+
+async function hasNewerCheckin(db: DbOrTx, userId: string, weekOf: string): Promise<boolean> {
+  const [newer] = await db
+    .select({ id: schema.checkins.id })
+    .from(schema.checkins)
+    .where(and(eq(schema.checkins.userId, userId), gt(schema.checkins.weekOf, weekOf)))
+    .limit(1);
+  return !!newer;
+}
+
+async function missCheckinAndAbandon(db: DbOrTx, userId: string, checkinId: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    if (!(await markMissed(tx, userId, checkinId))) return;
+    const { workflowRunId } = await getCheckin(tx, userId, checkinId);
+    if (workflowRunId) await abandonRun(tx, userId, workflowRunId);
+  });
 }
 
 async function emailAllowed(deps: CheckinDeps, userId: string): Promise<boolean> {
@@ -131,6 +157,11 @@ export async function prepareCheckin(
   const { db } = deps;
   const checkin = await getCheckin(db, userId, checkinId);
   if (checkin.status !== "scheduled") return;
+  // A delayed job must not resurrect a week superseded by a newer check-in.
+  if (await hasNewerCheckin(db, userId, checkin.weekOf)) {
+    await missCheckinAndAbandon(db, userId, checkinId);
+    return;
+  }
 
   // An unfinished check-in from an earlier week gives way to this one (no email).
   const open = await getActiveRun(db, userId, "checkin");
@@ -174,9 +205,7 @@ export async function followupCheckin(
   const { userId, checkinId } = data;
   const { db } = deps;
   if (data.stage === "final") {
-    if (!(await markMissed(db, userId, checkinId))) return;
-    const { workflowRunId } = await getCheckin(db, userId, checkinId);
-    if (workflowRunId) await abandonRun(db, userId, workflowRunId);
+    await missCheckinAndAbandon(db, userId, checkinId);
     return;
   }
   const checkin = await getCheckin(db, userId, checkinId);

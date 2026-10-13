@@ -1,5 +1,5 @@
 // packages/core/src/services/checkins/jobs.int.test.ts
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getTestDb, resetDb } from "../../../../../test/integration/db";
 import { fakeMailer, seedUser, workflowDeps } from "../../../../../test/integration/fixtures";
@@ -8,6 +8,7 @@ import { getActiveRun } from "../../workflows";
 import { createPlan } from "../plan";
 import { getUserSettings } from "../settings";
 import {
+  createScheduledCheckin,
   dispatchCheckins,
   followupCheckin,
   getCheckin,
@@ -91,6 +92,65 @@ describe("check-in jobs", () => {
     expect(await db.$count(schema.checkins)).toBe(1);
     expect((await getCheckin(db, "u1", c.id)).status).toBe("sent");
     expect(jobs("checkin.prepare")).toHaveLength(1);
+  });
+  it("recovers a failed dispatch enqueue across local Monday without duplicating the week", async () => {
+    await db
+      .update(schema.userSettings)
+      .set({ checkinTime: "23:55" })
+      .where(eq(schema.userSettings.userId, "u1"));
+    vi.spyOn(deps.queue, "send").mockRejectedValueOnce(new Error("queue unavailable"));
+    expect(await dispatchCheckins(deps, new Date("2026-10-19T03:55:00Z"))).toEqual({ created: 1 });
+    const c = await only();
+    const monday = new Date("2026-10-19T04:00:00Z");
+    expect(await dispatchCheckins(deps, monday)).toEqual({ created: 0 });
+    expect(jobs("checkin.prepare")).toEqual([
+      {
+        name: "checkin.prepare",
+        data: { userId: "u1", checkinId: c.id },
+        opts: { singletonKey: `checkin.prepare:${c.id}` },
+      },
+    ]);
+    await prepareCheckin(deps, { userId: "u1", checkinId: c.id }, monday);
+    expect(await db.$count(schema.checkins)).toBe(1);
+    expect(await getCheckin(db, "u1", c.id)).toMatchObject({
+      weekOf: "2026-10-12",
+      status: "sent",
+    });
+    expect(deps.mailer.sent).toHaveLength(1);
+  });
+  it("retires an overdue scheduled week when a newer check-in exists", async () => {
+    await dispatchCheckins(deps, DUE);
+    const old = await only();
+    vi.spyOn(deps.queue, "send").mockRejectedValueOnce(new Error("queue unavailable"));
+    await expect(prepareCheckin(deps, { userId: "u1", checkinId: old.id }, AFTER)).rejects.toThrow(
+      "queue unavailable",
+    );
+    const newer = await createScheduledCheckin(db, "u1", {
+      weekOf: "2026-10-19",
+      dueAt: new Date("2026-10-25T22:00:00Z"),
+    });
+    if (!newer) throw new Error("Expected a new check-in");
+    deps.queue.sent.length = 0;
+    await dispatchCheckins(deps, new Date("2026-10-19T15:00:00Z"));
+    expect((await getCheckin(db, "u1", old.id)).status).toBe("missed");
+    expect((await getCheckin(db, "u1", newer.id)).status).toBe("scheduled");
+    expect(await getActiveRun(db, "u1", "checkin")).toBeNull();
+    expect(jobs("checkin.prepare")).toHaveLength(0);
+    expect(deps.mailer.sent).toHaveLength(0);
+  });
+  it("a delayed prepare cannot replace a newer week's active workflow", async () => {
+    await dispatchCheckins(deps, DUE);
+    const old = await only();
+    await openCheckinNow(deps, "u1", new Date("2026-10-19T15:00:00Z"));
+    const newerRun = await getActiveRun(db, "u1", "checkin");
+    await prepareCheckin(
+      deps,
+      { userId: "u1", checkinId: old.id },
+      new Date("2026-10-19T15:10:00Z"),
+    );
+    expect((await getCheckin(db, "u1", old.id)).status).toBe("missed");
+    expect((await getActiveRun(db, "u1", "checkin"))?.id).toBe(newerRun?.id);
+    expect(deps.mailer.sent).toHaveLength(1);
   });
   it("prepare retries a failed nudge enqueue without losing the email or workflow", async () => {
     await dispatchCheckins(deps, AFTER);
@@ -179,6 +239,44 @@ describe("check-in jobs", () => {
     );
     expect((await getCheckin(db, "u1", c.id)).status).toBe("missed");
     expect(await getActiveRun(db, "u1", "checkin")).toBeNull();
+    expect(deps.mailer.sent).toHaveLength(1);
+  });
+  it("rolls back finalization if workflow abandonment fails, then retries successfully", async () => {
+    const c = await dispatchAndPrepare();
+    const runId = (await getCheckin(db, "u1", c.id)).workflowRunId;
+    await db.execute(sql`create function fail_checkin_abandon() returns trigger language plpgsql as $$
+      begin
+        if NEW.status = 'abandoned' then raise exception 'injected abandonment failure'; end if;
+        return NEW;
+      end;
+    $$`);
+    await db.execute(sql`create trigger fail_checkin_abandon before update on workflow_runs
+      for each row execute function fail_checkin_abandon()`);
+    const data = { userId: "u1", checkinId: c.id, stage: "final" as const };
+    try {
+      await expect(followupCheckin(deps, data)).rejects.toThrow();
+      expect((await getCheckin(db, "u1", c.id)).status).toBe("sent");
+      expect((await getActiveRun(db, "u1", "checkin"))?.id).toBe(runId);
+    } finally {
+      await db.execute(sql`drop trigger fail_checkin_abandon on workflow_runs`);
+      await db.execute(sql`drop function fail_checkin_abandon()`);
+    }
+    await followupCheckin(deps, data);
+    await followupCheckin(deps, data);
+    expect((await getCheckin(db, "u1", c.id)).status).toBe("missed");
+    expect(await getActiveRun(db, "u1", "checkin")).toBeNull();
+    expect(deps.mailer.sent).toHaveLength(1);
+  });
+  it("a final followup leaves a completed check-in and its workflow unchanged", async () => {
+    const c = await dispatchAndPrepare();
+    const runId = (await getActiveRun(db, "u1", "checkin"))?.id;
+    await markCompleted(db, "u1", c.id, { summary: "Done" });
+    await followupCheckin(deps, { userId: "u1", checkinId: c.id, stage: "final" });
+    expect(await getCheckin(db, "u1", c.id)).toMatchObject({
+      status: "completed",
+      summary: "Done",
+    });
+    expect((await getActiveRun(db, "u1", "checkin"))?.id).toBe(runId);
     expect(deps.mailer.sent).toHaveLength(1);
   });
   it("never nudges a completed check-in", async () => {
