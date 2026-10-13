@@ -13,7 +13,7 @@ import { ProviderList } from "./provider-list";
 
 export default async function SettingsPage() {
   await connection();
-  const { userId, role } = await requireSession();
+  const { userId, role, email } = await requireSession();
   const { db, config } = getServer();
   const [configs, settings, status] = await Promise.all([
     listProviderConfigs(db, userId),
@@ -85,7 +85,7 @@ export default async function SettingsPage() {
           />
         </CardContent>
       </Card>
-      <DataSection />
+      <DataSection email={email} />
     </section>
   );
 }

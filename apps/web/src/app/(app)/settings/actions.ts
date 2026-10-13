@@ -3,6 +3,7 @@
 import type { ProbeChecks, ProviderStatus } from "@pathwise/core/llm";
 import { createLogger } from "@pathwise/core/logger";
 import { calendarAction, mailErrorFields, sendCheckinCalendar } from "@pathwise/core/mail";
+import { deleteAccount } from "@pathwise/core/services/account";
 import {
   activateProviderConfig,
   deleteProviderConfig,
@@ -15,10 +16,14 @@ import {
   updateUserSettings,
 } from "@pathwise/core/services/settings";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { toFormError } from "@/lib/form-error";
+import { getJobAdmin } from "@/lib/jobs";
 import { optional, parseProviderInput, text } from "@/lib/provider-input";
 import { getServer } from "@/lib/server";
 import { requireSession } from "@/lib/session";
+import { DELETE_ACCOUNT_ERRORS } from "./errors";
 
 const log = createLogger("settings");
 
@@ -156,4 +161,26 @@ export async function saveCheckinScheduleAction(
   } finally {
     revalidatePath("/", "layout");
   }
+}
+
+export async function deleteAccountAction(
+  _prev: { error?: string } | undefined,
+  formData: FormData,
+): Promise<{ error?: string } | undefined> {
+  const { userId } = await requireSession();
+  const { db, config, auth } = getServer();
+  try {
+    const result = await deleteAccount({ db, config, jobs: await getJobAdmin() }, userId, {
+      confirmEmail: text(formData, "confirmEmail"),
+    });
+    if (!result.ok) return { error: DELETE_ACCOUNT_ERRORS[result.reason] };
+  } catch (error) {
+    return toFormError(error);
+  }
+  try {
+    await auth.api.signOut({ headers: await headers() });
+  } catch {
+    // Deletion already removed the session; cookie cleanup is best-effort.
+  }
+  redirect("/sign-in?deleted=1");
 }

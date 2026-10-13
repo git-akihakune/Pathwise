@@ -1,7 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export function DataSection() {
+import { DeleteAccountDialog } from "./delete-account-dialog";
+
+export function DataSection({ email }: { email: string }) {
   return (
     <Card>
       <CardHeader>
@@ -19,6 +21,7 @@ export function DataSection() {
             Download my data
           </a>
         </Button>
+        <DeleteAccountDialog email={email} />
       </CardContent>
     </Card>
   );

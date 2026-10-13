@@ -11,10 +11,10 @@ import { signInAction } from "../actions";
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; reset?: string }>;
+  searchParams: Promise<{ next?: string; reset?: string; deleted?: string }>;
 }) {
   await connection();
-  const { next, reset } = await searchParams;
+  const { next, reset, deleted } = await searchParams;
   const returnTo = safeNext(next);
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 p-4">
@@ -26,6 +26,7 @@ export default async function SignInPage({
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          {deleted === "1" && <Alert>Your account has been deleted.</Alert>}
           {reset === "1" && <Alert>Password updated. Sign in with your new password.</Alert>}
           <AuthForm
             action={signInAction}

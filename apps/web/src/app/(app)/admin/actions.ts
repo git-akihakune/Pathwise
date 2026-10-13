@@ -3,6 +3,7 @@
 import {
   discardDeadLetter,
   inviteUser,
+  promoteToAdmin,
   retryDeadLetter,
   revokeInvite,
   setSafetyResources,
@@ -156,5 +157,11 @@ export async function discardDeadLetterAction(formData: FormData): Promise<void>
   } catch (e) {
     if (!(e instanceof NotFoundError)) throw e;
   }
+  revalidatePath("/admin");
+}
+
+export async function promoteUserAction(formData: FormData): Promise<void> {
+  const { userId } = await requireAdmin();
+  await promoteToAdmin(getServer().db, userId, String(formData.get("userId") ?? ""));
   revalidatePath("/admin");
 }

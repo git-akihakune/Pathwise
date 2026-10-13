@@ -19,7 +19,7 @@ import {
 import { getJobAdmin } from "@/lib/jobs";
 import { getServer } from "@/lib/server";
 import { requireAdmin } from "@/lib/session";
-import { revokeInviteAction } from "./actions";
+import { promoteUserAction, revokeInviteAction } from "./actions";
 import { InstanceProvider } from "./instance-provider";
 import { InviteForm } from "./invite-form";
 import { JobHealth } from "./job-health";
@@ -195,6 +195,7 @@ export default async function AdminPage() {
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Joined</TableHead>
+                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -206,6 +207,16 @@ export default async function AdminPage() {
                     <Badge variant={u.role === "admin" ? "default" : "secondary"}>{u.role}</Badge>
                   </TableCell>
                   <TableCell>{date(u.createdAt)}</TableCell>
+                  <TableCell>
+                    {u.role === "user" && (
+                      <form action={promoteUserAction}>
+                        <input type="hidden" name="userId" value={u.id} />
+                        <Button type="submit" variant="outline" size="sm">
+                          Make admin
+                        </Button>
+                      </form>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

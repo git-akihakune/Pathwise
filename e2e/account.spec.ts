@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { strFromU8, unzipSync } from "fflate";
+import { ADA, signIn } from "./helpers";
+
+const carol = { name: "Carol", email: "carol@example.com", password: "carols-long-password" };
 
 test("an invited user downloads their own data", async ({ page, browser }) => {
-  const carol = { name: "Carol", email: "carol@example.com", password: "carols-long-password" };
   await page.goto("/admin");
   await page.getByLabel("Invite email").fill(carol.email);
   await page.getByRole("button", { name: "Create invite" }).click();
@@ -48,6 +50,39 @@ test("anonymous visitors cannot download account data", async ({ browser }) => {
     const response = await context.request.get("/api/account/export");
     expect(response.status()).toBe(401);
     expect(await response.json()).toEqual({ error: "unauthorized" });
+  } finally {
+    await context.close();
+  }
+});
+
+test("the only admin cannot delete their account", async ({ page }) => {
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "Delete account", exact: true }).click();
+  await page.getByLabel("Type your email to confirm").fill(ADA.email);
+  await page.getByRole("button", { name: "Delete my account" }).click();
+  await expect(page.getByText("You're the only admin. Promote another admin first.")).toBeVisible();
+});
+
+test("a user deletes their account and can no longer sign in", async ({ browser }) => {
+  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  try {
+    const page = await context.newPage();
+    await signIn(page, carol.email, carol.password);
+    await page.goto("/settings");
+    await page.getByRole("button", { name: "Delete account", exact: true }).click();
+    const confirm = page.getByRole("button", { name: "Delete my account" });
+    await expect(confirm).toBeDisabled();
+    await page.getByLabel("Type your email to confirm").fill("someone@else.io");
+    await expect(confirm).toBeDisabled();
+    await page.getByLabel("Type your email to confirm").fill(` ${carol.email.toUpperCase()} `);
+    await confirm.click();
+    await expect(page).toHaveURL(/\/sign-in\?deleted=1$/);
+    await expect(page.getByText("Your account has been deleted.")).toBeVisible();
+    await page.goto("/sign-in");
+    await page.getByLabel("Email").fill(carol.email);
+    await page.getByLabel("Password").fill(carol.password);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page.getByText("Email or password is incorrect.")).toBeVisible();
   } finally {
     await context.close();
   }
