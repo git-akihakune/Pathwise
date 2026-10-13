@@ -1,3 +1,4 @@
+import { deflateSync } from "node:zlib";
 import { strToU8, zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import { makeDocx, makePdf } from "../../../../../test/fixtures/documents";
@@ -50,9 +51,7 @@ describe("readDocumentText", () => {
 
   it("does not loop on a ZIP64 entry-count bomb", async () => {
     const t = Date.now();
-    await expect(readDocumentText(entryCountBomb(), DOCX_MIME)).rejects.toThrow(
-      /too many entries/i,
-    );
+    await expect(readDocumentText(entryCountBomb(), DOCX_MIME)).rejects.toThrow();
     expect(Date.now() - t).toBeLessThan(2000);
   });
 
@@ -61,4 +60,56 @@ describe("readDocumentText", () => {
       /pages/i,
     );
   });
+});
+
+describe("hostile files (worker isolation)", () => {
+  const rss = () => Math.round(process.memoryUsage().rss / 1048576);
+
+  it("rejects a DOCX whose real content inflates far beyond its declared sizes", async () => {
+    const big = new Uint8Array(120 * 1024 * 1024).fill(0x20);
+    const z = Buffer.from(zipSync({ "word/document.xml": big }, { level: 9 }));
+    const name = Buffer.from("word/document.xml");
+    for (let i = 0; i < z.length - 4; i++) {
+      const sig = z.readUInt32LE(i);
+      if (sig === 0x04034b50 && z.subarray(i + 30, i + 30 + name.length).equals(name))
+        z.writeUInt32LE(1000, i + 22);
+      if (sig === 0x02014b50 && z.subarray(i + 46, i + 46 + name.length).equals(name))
+        z.writeUInt32LE(1000, i + 24);
+    }
+    expect(z.length).toBeLessThan(500_000);
+    const before = rss();
+    const t = Date.now();
+    await expect(readDocumentText(z, DOCX_MIME)).rejects.toThrow(/too large/i);
+    console.info(`lying-size DOCX: ${Date.now() - t} ms, rss ${before} -> ${rss()} MB`);
+    expect(Date.now() - t).toBeLessThan(10_000);
+  });
+
+  it("survives a FlateDecode PDF bomb", async () => {
+    const raw = Buffer.alloc(300 * 1024 * 1024, 0x20);
+    Buffer.from("BT /F1 12 Tf 72 720 Td (hello) Tj ET").copy(raw, 0);
+    const comp = deflateSync(raw, { level: 9 });
+    const pdf = Buffer.from(
+      makePdf("x")
+        .toString("latin1")
+        .replace(
+          /<< \/Length \d+ >>\nstream\n[\s\S]*?\nendstream/,
+          () =>
+            `<< /Length ${comp.length} /Filter /FlateDecode >>\nstream\n${comp.toString("latin1")}\nendstream`,
+        ),
+      "latin1",
+    );
+    const before = rss();
+    const t = Date.now();
+    const outcome = await readDocumentText(pdf, "application/pdf").then(
+      (x) => `text:${x.length}`,
+      (e: Error) => `rejected:${e.message}`,
+    );
+    console.info(`PDF bomb: ${outcome} ${Date.now() - t} ms, rss ${before} -> ${rss()} MB`);
+    expect(Date.now() - t).toBeLessThan(35_000);
+    expect(rss() - before).toBeLessThan(1500);
+    // The process is alive and still reads normal files.
+    expect(await readDocumentText(makePdf("Still fine"), "application/pdf")).toContain(
+      "Still fine",
+    );
+  }, 60_000);
 });

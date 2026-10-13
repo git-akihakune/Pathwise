@@ -4,6 +4,7 @@ import { type DbOrTx, schema } from "../../db";
 import type { JobDeps } from "../../jobs/queue";
 import { isAuthError, type Llm, resolveLlm, StructuredOutputError } from "../../llm";
 import { generateStructured } from "../../llm/generate";
+import { createLogger } from "../../logger";
 import {
   documentExtractionSchema,
   extractionBudgetChars,
@@ -13,6 +14,8 @@ import {
 import { readDocumentText } from "./read";
 import { type DocumentErrorCode, readDocumentBytes } from "./service";
 import type { DocumentMime } from "./sniff";
+
+const log = createLogger("documents");
 
 export const DOCUMENT_ERRORS: Record<DocumentErrorCode, string> = {
   scanned:
@@ -69,7 +72,11 @@ export async function parseDocument(
       bytes = await readDocumentBytes(db, config, userId, documentId);
       if (!bytes) throw new Error("Stored file is missing.");
       text = await readDocumentText(bytes, mime);
-    } catch {
+    } catch (e) {
+      log.warn(
+        { documentId, cause: e instanceof Error ? e.name : "unknown" },
+        "document unreadable",
+      );
       return fail("unreadable");
     }
     await db
@@ -109,7 +116,9 @@ export async function parseDocument(
   } else {
     const budget = extractionBudgetChars(llm.capabilities.contextWindow);
     truncated = text.length > budget;
-    input = { prompt: `<document>\n${text.slice(0, budget)}\n</document>` };
+    // A literal closing tag in the text must not end the data block early.
+    const body = text.slice(0, budget).replace(/<(\/?)document/gi, "<$1 document");
+    input = { prompt: `<document>\n${body}\n</document>` };
   }
 
   try {
