@@ -99,6 +99,13 @@ async function turn(
   expect(result).toBeDefined(); // the body closes only after onTurnEnd resolves (Plan 5 relies on this)
   return { chunks, result: result as TurnResult, queue };
 }
+async function seedRun(): Promise<string> {
+  const [run] = await db
+    .insert(schema.workflowRuns)
+    .values({ userId: "u1", type: "onboarding", stepId: "intake" })
+    .returning({ id: schema.workflowRuns.id });
+  return (run as { id: string }).id;
+}
 async function seedLongSession() {
   const s = await getOrStartSession(db, "u1");
   for (let i = 0; i < 40; i++) {
@@ -249,7 +256,7 @@ describe("runTurn", () => {
     const chat = new MockLanguageModelV4({ doStream: textStream("should not run") });
     const { result } = await turn({ classify: classifyAs([]), chat }, userMsg("I can't go on"), {
       workflow: {
-        runId: crypto.randomUUID(),
+        runId: await seedRun(),
         stepId: "intake",
         skills: [],
         goal: "Get to know them",
@@ -289,7 +296,7 @@ describe("runTurn", () => {
     const chat = new MockLanguageModelV4({ doStream: textStream("Tell me more.") });
     const { result } = await turn({ classify, chat }, userMsg("Hi"), {
       workflow: {
-        runId: crypto.randomUUID(),
+        runId: await seedRun(),
         stepId: "intake",
         skills: ["planning"],
         goal: "Cover values and constraints",

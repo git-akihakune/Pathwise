@@ -2,6 +2,7 @@ import type { UIMessage } from "ai";
 import { beforeEach, describe, expect, it } from "vitest";
 import { getTestDb, resetDb } from "../../../../../test/integration/db";
 import { seedUser } from "../../../../../test/integration/fixtures";
+import { schema } from "../../db";
 import { ConflictError, NotFoundError } from "../../errors";
 import { createProposal, listProposals } from "../proposals";
 import {
@@ -11,6 +12,7 @@ import {
   finalizeMessage,
   getOrStartSession,
   getSessionState,
+  latestSessionForRun,
   listConversation,
   messagesAfter,
   recentMessages,
@@ -47,10 +49,29 @@ describe("getOrStartSession", () => {
     expect((await getOrStartSession(db, "u1")).id).toBe(focused.id);
   });
   it("never continues a workflow session in free chat", async () => {
-    const runId = "00000000-0000-4000-8000-000000000001";
+    const [run] = await db
+      .insert(schema.workflowRuns)
+      .values({ userId: "u1", type: "onboarding", stepId: "intake" })
+      .returning({ id: schema.workflowRuns.id });
+    const runId = (run as { id: string }).id;
     const wf = await getOrStartSession(db, "u1", { workflowRunId: runId });
     expect((await getOrStartSession(db, "u1", { workflowRunId: runId })).id).toBe(wf.id);
     expect((await getOrStartSession(db, "u1")).id).not.toBe(wf.id);
+  });
+  it("keeps a workflow session past the 6 h gap, and looks it up read-only", async () => {
+    const [run] = await db
+      .insert(schema.workflowRuns)
+      .values({ userId: "u1", type: "onboarding", stepId: "intake" })
+      .returning({ id: schema.workflowRuns.id });
+    const runId = (run as { id: string }).id;
+    expect(await latestSessionForRun(db, "u1", runId)).toBeNull();
+    const wf = await getOrStartSession(db, "u1", { workflowRunId: runId });
+    const later = new Date(Date.now() + 30 * H);
+    expect((await getOrStartSession(db, "u1", { workflowRunId: runId, now: later })).id).toBe(
+      wf.id,
+    );
+    expect((await latestSessionForRun(db, "u1", runId))?.id).toBe(wf.id);
+    expect(await latestSessionForRun(db, "u2", runId)).toBeNull();
   });
   it("returns one session for concurrent first messages", async () => {
     const [a, b] = await Promise.all([getOrStartSession(db, "u1"), getOrStartSession(db, "u1")]);

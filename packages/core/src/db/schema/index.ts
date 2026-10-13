@@ -6,3 +6,4 @@ export * from "./profile";
 export * from "./proposals";
 export * from "./providers";
 export * from "./taxonomy";
+export * from "./workflows";

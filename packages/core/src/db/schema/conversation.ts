@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { anyVector, tsvector } from "./columns";
+import { workflowRuns } from "./workflows";
 
 export const sessions = pgTable(
   "sessions",
@@ -39,8 +40,9 @@ export const sessions = pgTable(
       (): AnyPgColumn => messages.id,
       { onDelete: "set null" },
     ),
-    // No FK yet: workflow_runs arrives with the workflows plan.
-    workflowRunId: uuid("workflow_run_id"),
+    workflowRunId: uuid("workflow_run_id").references(() => workflowRuns.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

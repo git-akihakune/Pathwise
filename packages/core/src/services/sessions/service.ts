@@ -85,7 +85,8 @@ async function ownedSession(db: DbOrTx, userId: string, sessionId: string): Prom
 
 /**
  * The user's open session, or a new one after a gap of more than 6 h, or when a topic is given.
- * With `workflowRunId` only that run's session continues; free chat never continues a workflow session.
+ * With `workflowRunId` only that run's session continues, however long the gap; free chat never
+ * continues a workflow session.
  */
 export async function getOrStartSession(
   db: DbOrTx,
@@ -112,7 +113,7 @@ export async function getOrStartSession(
     if (
       candidate &&
       !opts.topic &&
-      now.getTime() - candidate.lastMessageAt.getTime() <= SESSION_GAP_MS
+      (opts.workflowRunId || now.getTime() - candidate.lastMessageAt.getTime() <= SESSION_GAP_MS)
     ) {
       return toSession(candidate);
     }
@@ -134,6 +135,21 @@ export async function getOrStartSession(
       .returning();
     return toSession(created as SessionRow);
   });
+}
+
+/** The newest session of a workflow run, if any (read-only; never starts or ends a session). */
+export async function latestSessionForRun(
+  db: DbOrTx,
+  userId: string,
+  workflowRunId: string,
+): Promise<ChatSession | null> {
+  const [row] = await db
+    .select()
+    .from(sessions)
+    .where(and(eq(sessions.userId, userId), eq(sessions.workflowRunId, workflowRunId)))
+    .orderBy(desc(sessions.lastMessageAt), desc(sessions.createdAt))
+    .limit(1);
+  return row ? toSession(row) : null;
 }
 
 export async function getSessionState(

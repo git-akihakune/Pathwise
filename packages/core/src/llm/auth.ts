@@ -16,3 +16,10 @@ export async function markAuthFailed(db: Db, providerConfigId: string): Promise<
     .set({ status: "degraded", authFailed: true, updatedAt: sql`now()` })
     .where(eq(schema.providerConfigs.id, providerConfigId));
 }
+
+/** True when the provider answered with an API error (any status). */
+export function isProviderError(e: unknown): boolean {
+  return (
+    APICallError.isInstance(e) || (RetryError.isInstance(e) && APICallError.isInstance(e.lastError))
+  );
+}

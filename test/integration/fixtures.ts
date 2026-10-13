@@ -23,6 +23,7 @@ import type {
   ProviderStatus,
 } from "../../packages/core/src/llm/types";
 import { activateProviderConfig } from "../../packages/core/src/services/providers";
+import type { WorkflowDeps } from "../../packages/core/src/workflows/types";
 
 export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
   return {
@@ -119,6 +120,22 @@ export function fakeQueue(): JobQueue & {
     async send(name, data, opts) {
       sent.push(opts ? { name, data, opts } : { name, data });
     },
+  };
+}
+
+export function workflowDeps(
+  db: Db,
+  overrides: Partial<AppConfig> = {},
+): WorkflowDeps & { queue: ReturnType<typeof fakeQueue> } {
+  return {
+    db,
+    config: testConfig({
+      llmMode: "mock",
+      appUrl: "https://coach.example.com",
+      filesDir: mkdtempSync(join(tmpdir(), "pw-files-")),
+      ...overrides,
+    }),
+    queue: fakeQueue(),
   };
 }
 
