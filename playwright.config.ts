@@ -31,6 +31,12 @@ export default defineConfig({
       dependencies: ["settings"],
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      name: "coach",
+      testMatch: "coach.spec.ts",
+      dependencies: ["settings"],
+      use: { ...devices["Desktop Chrome"], storageState: ADA_STATE },
+    },
     // The sign-in action allows 10 attempts per minute, so the domain specs share one sign-in.
     {
       name: "domain-setup",
