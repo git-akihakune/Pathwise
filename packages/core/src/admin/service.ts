@@ -1,7 +1,8 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { type Db, schema } from "../db";
-import { ForbiddenError, ValidationError } from "../errors";
+import { ADMIN_LOCK_KEY } from "../auth";
+import { type Db, type DbOrTx, schema } from "../db";
+import { ForbiddenError, NotFoundError, ValidationError } from "../errors";
 import type { SafetyResource, SignupMode } from "../instance";
 import {
   createInvite,
@@ -19,12 +20,25 @@ export interface AdminUserRow {
   createdAt: Date;
 }
 
-export async function assertAdmin(db: Db, actorId: string): Promise<void> {
+export async function assertAdmin(db: DbOrTx, actorId: string): Promise<void> {
   const [row] = await db
     .select({ role: schema.user.role })
     .from(schema.user)
     .where(eq(schema.user.id, actorId));
   if (row?.role !== "admin") throw new ForbiddenError("admin access required");
+}
+
+export async function promoteToAdmin(db: Db, actorId: string, userId: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(${ADMIN_LOCK_KEY})`);
+    await assertAdmin(tx, actorId);
+    const [user] = await tx
+      .update(schema.user)
+      .set({ role: "admin" })
+      .where(eq(schema.user.id, userId))
+      .returning({ id: schema.user.id });
+    if (!user) throw new NotFoundError("User not found.");
+  });
 }
 
 export async function listUsers(db: Db, actorId: string): Promise<AdminUserRow[]> {

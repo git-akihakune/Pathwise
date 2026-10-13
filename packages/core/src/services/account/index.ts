@@ -1,3 +1,4 @@
+export * from "./delete";
 export {
   EXPORT_EXCLUDED_TABLES,
   EXPORT_OMITTED_COLUMNS,

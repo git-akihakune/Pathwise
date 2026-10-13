@@ -1,10 +1,20 @@
+import { setTimeout } from "node:timers/promises";
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { getTestDb, resetDb } from "../../../../test/integration/db";
+import { ADMIN_LOCK_KEY } from "../auth";
 import { schema } from "../db";
 import { ForbiddenError, NotFoundError } from "../errors";
 import { ensureInstanceSettings, getInstanceSettings } from "../instance";
 import { describeInvite, markInviteUsed } from "../invites";
-import { inviteUser, listInvites, listUsers, revokeInvite, setSignupMode } from "./service";
+import {
+  inviteUser,
+  listInvites,
+  listUsers,
+  promoteToAdmin,
+  revokeInvite,
+  setSignupMode,
+} from "./service";
 
 const db = getTestDb();
 beforeEach(async () => {
@@ -28,6 +38,39 @@ describe("admin service", () => {
   });
   it("forbids unknown actors", async () => {
     await expect(listUsers(db, "ghost")).rejects.toBeInstanceOf(ForbiddenError);
+  });
+  it("promotes a user to admin and authorizes admins only", async () => {
+    await expect(promoteToAdmin(db, "usr", "usr")).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(promoteToAdmin(db, "ghost", "usr")).rejects.toBeInstanceOf(ForbiddenError);
+    await promoteToAdmin(db, "adm", "usr");
+    expect((await listUsers(db, "adm")).find((u) => u.id === "usr")?.role).toBe("admin");
+    await expect(promoteToAdmin(db, "adm", "missing")).rejects.toBeInstanceOf(NotFoundError);
+  });
+  it("rechecks promotion authorization after waiting for the shared admin lock", async () => {
+    await db
+      .insert(schema.user)
+      .values({ id: "adm2", name: "Other admin", email: "other@x.io", role: "admin" });
+    let promotion: Promise<unknown> | undefined;
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(${ADMIN_LOCK_KEY})`);
+      // Catch immediately so a broken implementation cannot produce an unhandled rejection.
+      promotion = promoteToAdmin(db, "adm", "usr").catch((error: unknown) => error);
+      let waiting = false;
+      for (let i = 0; i < 100; i++) {
+        const result = await tx.execute<{ waiting: boolean }>(sql`
+          select exists(select 1 from pg_locks where locktype = 'advisory'
+            and objid = ${ADMIN_LOCK_KEY} and not granted) as waiting`);
+        if (result.rows[0]?.waiting) {
+          waiting = true;
+          break;
+        }
+        await setTimeout(10);
+      }
+      expect(waiting, "Promotion must wait for the admin-count lock").toBe(true);
+      await tx.delete(schema.user).where(eq(schema.user.id, "adm"));
+    });
+    expect(await promotion).toBeInstanceOf(ForbiddenError);
+    expect(await db.$count(schema.user, eq(schema.user.role, "admin"))).toBe(1);
   });
   it("lists users and changes sign-up mode", async () => {
     expect((await listUsers(db, "adm")).map((u) => u.email)).toEqual(["ada@x.io", "bob@x.io"]);
