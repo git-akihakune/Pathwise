@@ -86,19 +86,33 @@ export async function readRun(path: string, cwd: string): Promise<RunResult> {
 }
 
 function variants(secrets: (string | undefined)[]): string[] {
-  return [...new Set(secrets.flatMap((s) => [s, s?.trim()]).filter((s): s is string => !!s))].sort(
-    (a, b) => b.length - a.length,
-  );
+  return [
+    ...new Set(
+      secrets
+        .filter((s) => s?.trim())
+        .flatMap((s) => [s, s?.trim()])
+        .filter((s): s is string => !!s),
+    ),
+  ].sort((a, b) => b.length - a.length);
 }
 export function redactText(text: string, secrets: (string | undefined)[]): string {
   for (const secret of variants(secrets)) text = text.replaceAll(secret, "[redacted]");
   return text;
 }
 export function resultJson(value: unknown, secrets: (string | undefined)[]): string {
-  let json = JSON.stringify(value, null, 2);
-  for (const secret of variants(secrets))
-    json = json.replaceAll(JSON.stringify(secret).slice(1, -1), "[redacted]");
-  return json;
+  return JSON.stringify(
+    value,
+    (_key, item: unknown) => {
+      if (typeof item === "string") return redactText(item, secrets);
+      if (item && typeof item === "object" && !Array.isArray(item)) {
+        return Object.fromEntries(
+          Object.entries(item).map(([key, v]) => [redactText(key, secrets), v]),
+        );
+      }
+      return item;
+    },
+    2,
+  );
 }
 export function printRun(run: RunResult, output: (line: string) => void): void {
   const ids = Object.keys(CRITERIA) as CriterionId[];
