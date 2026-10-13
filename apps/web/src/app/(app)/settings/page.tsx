@@ -8,6 +8,7 @@ import { getServer } from "@/lib/server";
 import { requireSession } from "@/lib/session";
 import { CheckinScheduleForm } from "./checkin-schedule-form";
 import { CoachSettings } from "./coach-settings";
+import { DataSection } from "./data-section";
 import { ProviderList } from "./provider-list";
 
 export default async function SettingsPage() {
@@ -84,6 +85,7 @@ export default async function SettingsPage() {
           />
         </CardContent>
       </Card>
+      <DataSection />
     </section>
   );
 }

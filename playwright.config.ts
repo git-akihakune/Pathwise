@@ -20,6 +20,12 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
     {
+      name: "account",
+      testMatch: "account.spec.ts",
+      dependencies: ["auth", "domain-setup"],
+      use: { ...devices["Desktop Chrome"], storageState: ADA_STATE },
+    },
+    {
       name: "settings",
       testMatch: "settings.spec.ts",
       dependencies: ["admin", "domain-setup"],
