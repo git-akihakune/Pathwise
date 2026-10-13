@@ -11,12 +11,18 @@ import {
   testDeps,
   textReply,
 } from "../../../../test/integration/fixtures";
+import { SAFETY_RESPONSE } from "../agent/distress";
 import { schema } from "../db";
 import { resolveLlm } from "../llm";
 import { addMemory, listMemory } from "../services/memory";
 import { createPlan, mondayOf } from "../services/plan";
 import { createProposal, listProposals } from "../services/proposals";
-import { appendMessage, getOrStartSession, getSessionState } from "../services/sessions";
+import {
+  appendMessage,
+  getOrStartSession,
+  getSessionState,
+  setCuratedThrough,
+} from "../services/sessions";
 import { curateSession } from "./curator";
 
 vi.mock("../llm", async (orig) => ({
@@ -75,7 +81,7 @@ it("waits until the session has been idle for 30 minutes (Review Focus 4)", asyn
   useModels({ "curate.extract": extraction({}) });
   const sid = await session(["I prefer remote work"]);
   expect((await curateSession(deps, "u1", sid)).status).toBe("not_idle");
-  await idleFor(sid, 29);
+  await idleFor(sid, 28);
   expect((await curateSession(deps, "u1", sid)).status).toBe("not_idle");
   await idleFor(sid, 31);
   expect((await curateSession(deps, "u1", sid)).status).toBe("done");
@@ -213,4 +219,54 @@ it("skips users without a provider", async () => {
   const sid = await session(["hi"]);
   await idleFor(sid, 31);
   expect((await curateSession(deps, "u1", sid)).status).toBe("no_provider");
+});
+
+it("tolerates 60 s of clock skew in the idle check, but no more", async () => {
+  useModels({ "curate.extract": extraction({}) });
+  const sid = await session(["I prefer remote work"]);
+  await idleFor(sid, 28.9); // 30 min - 66 s: still too recent
+  expect((await curateSession(deps, "u1", sid)).status).toBe("not_idle");
+  await idleFor(sid, 29.2); // 30 min - 48 s: within tolerance
+  expect((await curateSession(deps, "u1", sid)).status).toBe("done");
+});
+
+it("writes nothing when the watermark moved during the LLM calls (compare-and-set)", async () => {
+  const sid = await session(["I prefer remote work", "And I like mornings"]);
+  const msgs = await db.select().from(schema.messages).where(eq(schema.messages.sessionId, sid));
+  const first = msgs.sort((a, b) => a.seq - b.seq)[0]?.id as string;
+  useModels({
+    "curate.extract": new MockLanguageModelV4({
+      doGenerate: async () => {
+        await setCuratedThrough(db, "u1", sid, first); // a concurrent run finished meanwhile
+        return jsonReply({
+          memories: [mem("preference", "Prefers remote work", 0.9, false)],
+          stories: [],
+          actionUpdates: [],
+        });
+      },
+    }),
+  });
+  await idleFor(sid, 31);
+  expect((await curateSession(deps, "u1", sid)).status).toBe("no_new_messages");
+  expect(await allMemory()).toEqual([]);
+  expect((await getSessionState(db, "u1", sid)).curatedThroughMessageId).toBe(first);
+});
+
+it("keeps safety-response turns out of the curator input", async () => {
+  const extract = extraction({});
+  useModels({ "curate.extract": extract });
+  const s = await getOrStartSession(db, "u1");
+  for (const [role, t] of [
+    ["user", "I want to end my life"],
+    ["assistant", SAFETY_RESPONSE([{ name: "Find a Helpline", url: "https://findahelpline.com" }])],
+    ["user", "I prefer remote work"],
+  ] as const) {
+    await appendMessage(db, "u1", s.id, { role, parts: [{ type: "text", text: t }] });
+  }
+  await idleFor(s.id, 31);
+  expect((await curateSession(deps, "u1", s.id)).status).toBe("done");
+  const prompt = JSON.stringify(extract.doGenerateCalls[0]?.prompt);
+  expect(prompt).toContain("I prefer remote work");
+  expect(prompt).not.toContain("end my life");
+  expect(prompt).not.toContain("findahelpline");
 });

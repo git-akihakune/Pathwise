@@ -55,7 +55,7 @@ export function truncateToTokens(text: string, max: number): string {
 }
 
 export function wrapData(source: string, text: string): string {
-  return `<data source="${source}">\n${text.replaceAll("</data>", "</ data>")}\n</data>`;
+  return `<data source="${source}">\n${text.replace(/<\/\s*data\s*>/gi, "</ data>")}\n</data>`;
 }
 
 export function messageTokens(m: UIMessage): number {

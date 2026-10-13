@@ -16,6 +16,9 @@ const ACUTE = [
   "(?:commit|thinking about|thoughts of) suicide",
   "self[- ]?harm(?:ing)?",
   "kill me",
+  "end(?:ing)? it all",
+  "no reason to live",
+  "not worth living",
   "(?:can'?t|cannot|can not) go on",
 ];
 const ELEVATED = [
@@ -51,8 +54,11 @@ export function maxDistress(a: Distress, b: Distress): Distress {
 
 const escapeLinkText = (t: string) => t.replace(/[\\[\]]/g, "\\$&");
 
+/** Opening line of every safety reply; lets other code recognise stored safety turns. */
+export const SAFETY_LEAD = "I'm really sorry you're going through this.";
+
 export const SAFETY_RESPONSE = (resources: SafetyResource[]): string =>
-  `I'm really sorry you're going through this. I'm an AI career coach, so I can't help with this the way a person can, and your safety matters more than anything we were working on.
+  `${SAFETY_LEAD} I'm an AI career coach, so I can't help with this the way a person can, and your safety matters more than anything we were working on.
 
 If you might act on thoughts of harming yourself, or you're in immediate danger, please contact your local emergency number now.
 

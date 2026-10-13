@@ -51,3 +51,19 @@ it("strips provenance from profile fields and rejects duplicate action ids", () 
   const u = { actionId: id, status: "done", basedOnVersion: 1 };
   expect(S.action_status_update.safeParse({ updates: [u, u] }).success).toBe(false);
 });
+
+it("keeps organization on experience create and rejects unknown profile field keys", () => {
+  const ok = S.profile_update.parse({
+    entity: "experience",
+    op: "create",
+    fields: { title: "Dev", organization: "Acme", startDate: "2020-03" },
+  });
+  expect(ok.fields).toMatchObject({ organization: "Acme" });
+  const bad = S.profile_update.safeParse({
+    entity: "experience",
+    op: "create",
+    fields: { title: "Dev", company: "Acme" },
+  });
+  expect(bad.success).toBe(false);
+  if (!bad.success) expect(JSON.stringify(bad.error.issues)).toContain("company");
+});

@@ -26,11 +26,11 @@ export default async function CoachPage({
     getProviderStatusForUser(db, userId),
     getUserSettings(db, userId),
   ]);
-  const readOnly = status.source === "none" || status.authFailed;
+  const needsProvider = status.source === "none" || status.authFailed;
   return (
     <section className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">Coach</h1>
-      {readOnly && (
+      {needsProvider && (
         <Card>
           <CardHeader>
             <CardTitle>
@@ -39,7 +39,10 @@ export default async function CoachPage({
                 : "The coach needs an AI provider before it can reply."}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-2">
+            <p className="text-sm">
+              Messages won't get a coaching reply until a provider is set up.
+            </p>
             <Link href="/settings" className="underline">
               Set up a provider
             </Link>
@@ -53,7 +56,6 @@ export default async function CoachPage({
         screen={screen}
         prompt={one(params.prompt) ?? ""}
         timeZone={effectiveTimezone(settings)}
-        readOnly={readOnly}
       />
     </section>
   );

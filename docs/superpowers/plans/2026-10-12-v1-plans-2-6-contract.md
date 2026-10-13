@@ -352,7 +352,7 @@ export function getSkill(id: SkillId): Skill;
 export interface WorkflowTurn { runId: string; stepId: string; skills: SkillId[]; goal: string }
 export interface TurnInput { userId: string; message: UIMessage; screen?: Screen; topic?: string; workflow?: WorkflowTurn }
 export interface TurnDeps extends LlmDeps { queue: JobQueue }
-export interface TurnResult { sessionId: string; assistantMessageId: string; status: "complete" | "interrupted"; text: string }
+export interface TurnResult { sessionId: string; assistantMessageId: string; status: "complete" | "interrupted"; text: string; safety: boolean }
 export function runTurn(deps: TurnDeps, input: TurnInput, hooks?: { onTurnEnd?: (r: TurnResult) => Promise<void> }): Promise<Response>; // UI message stream response
 export function assembleContext(input: AssembleInput): AssembledContext;  // pure: budget = min(0.6*ctxWindow, 32000), caps per spec §5.2
 export function selectSkills(input: { classified: SkillId[]; recent: SkillId[][]; screen?: Screen; workflow?: WorkflowTurn }): SkillId[];

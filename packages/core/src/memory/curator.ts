@@ -16,6 +16,7 @@ import { renderTranscript } from "./transcript";
 const log = createLogger("memory");
 
 export const CURATE_IDLE_MS = 30 * 60 * 1000;
+const IDLE_TOLERANCE_MS = 60_000;
 const COSINE_MATCH = 0.85;
 const LEXEME_MATCH = 0.6;
 
@@ -132,7 +133,11 @@ export async function curateSession(
 ): Promise<CurateReport> {
   const { db } = deps;
   const state = await getSessionState(db, userId, sessionId);
-  if (Date.now() - state.lastMessageAt.getTime() < CURATE_IDLE_MS) return report("not_idle");
+  // 60 s of tolerance for clock skew between this process and the database that set lastMessageAt;
+  // a skipped job is never re-enqueued.
+  if (Date.now() - state.lastMessageAt.getTime() < CURATE_IDLE_MS - IDLE_TOLERANCE_MS) {
+    return report("not_idle");
+  }
   const msgs = await messagesAfter(db, userId, sessionId, state.curatedThroughMessageId);
   const lastMsg = msgs[msgs.length - 1];
   if (!lastMsg) return report("no_new_messages");
@@ -221,7 +226,17 @@ export async function curateSession(
     });
 
     const out = report("done", { duplicates });
+    let stale = false;
     await db.transaction(async (tx) => {
+      // Compare-and-set: another run may have curated this session during the LLM calls.
+      const current = await tx.execute<{ w: string | null }>(
+        sql`select curated_through_message_id as w from sessions
+            where id = ${sessionId} and user_id = ${userId} for update`,
+      );
+      if ((current.rows[0]?.w ?? null) !== state.curatedThroughMessageId) {
+        stale = true;
+        return;
+      }
       for (const { c, supersedesId } of plans) {
         const active = !c.sensitive && c.confidence >= 0.8;
         await addMemory(tx, userId, {
@@ -253,6 +268,10 @@ export async function curateSession(
       }
       await setCuratedThrough(tx, userId, sessionId, lastMsg.id);
     });
+    if (stale) {
+      result = report("no_new_messages");
+      return;
+    }
     result = out;
 
     // The session's embedding is refreshed by the next maintenance tick.

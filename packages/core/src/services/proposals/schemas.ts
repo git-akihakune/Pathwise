@@ -91,6 +91,17 @@ const profileUpdate = z
       }
       return z.NEVER;
     }
+    // Zod strips unknown keys, which would silently lose data the model meant to save.
+    const input = stripProvenance(p.fields);
+    const unknown = Object.keys(input).filter((k) => !(k in (checked.data as object)));
+    if (unknown.length > 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: `Unknown field(s): ${unknown.join(", ")}.`,
+        path: ["fields"],
+      });
+      return z.NEVER;
+    }
     // Provenance is set at apply time, so it is not kept in the stored payload.
     return { entity: p.entity, op: p.op, id: p.id, fields: stripProvenance(checked.data) };
   });

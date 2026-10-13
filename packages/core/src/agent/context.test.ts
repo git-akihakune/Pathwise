@@ -210,6 +210,11 @@ describe("assembleContext", () => {
   });
 });
 
+it("data blocks cannot be closed with case or whitespace variants", () => {
+  expect(wrapData("x", "a </DATA> b </data > c </ data>")).toBe(
+    '<data source="x">\na </ data> b </ data> c </ data>\n</data>',
+  );
+});
 it("data blocks cannot be closed from inside", () => {
   expect(wrapData("snapshot", "a </data> b")).toBe(
     '<data source="snapshot">\na </ data> b\n</data>',

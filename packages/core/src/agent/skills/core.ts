@@ -21,7 +21,7 @@ const profileInput = z.object({
     .record(z.string(), z.unknown())
     .optional()
     .describe(
-      "Required for create and update. Experience: title, company, startDate, endDate, description, highlights. Education: institution, degree, field, startDate, endDate. Skill: name, level (basic|working|strong|expert), evidence.",
+      'Required for create and update. Experience: title, organization, startDate, endDate, description, highlights. Education: institution, qualification, field, startDate, endDate. Skill: name, level (basic|working|strong|expert), evidence. Dates are "YYYY", "YYYY-MM" or "YYYY-MM-DD". Unknown field names are rejected.',
     ),
 });
 const storyInput = z.object({

@@ -74,7 +74,8 @@ const safetyResourceListSchema = z
   .array(
     z.object({
       name: z.string().trim().min(1).max(80),
-      url: z.url({ protocol: /^https?$/ }),
+      // <, > and whitespace would break the `(<url>)` link in the safety response.
+      url: z.url({ protocol: /^https?$/ }).refine((u) => !/[<>\s]/.test(u)),
     }),
   )
   .min(1)

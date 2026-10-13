@@ -125,7 +125,7 @@ describe("runTurn", () => {
       },
       userMsg("I want a change"),
     );
-    expect(result).toMatchObject({ status: "complete", text: "Hello there." });
+    expect(result).toMatchObject({ status: "complete", text: "Hello there.", safety: false });
     expect((await recentMessages(db, "u1", result.sessionId)).map((m) => m.role)).toEqual([
       "user",
       "assistant",
@@ -205,6 +205,8 @@ describe("runTurn", () => {
       userMsg("I don't see the point anymore"),
     );
     expect(result.text).toBe(SAFETY);
+    expect(result.safety).toBe(true);
+    expect(result.safety).toBe(true);
     expect(chat.doStreamCalls).toHaveLength(0);
     const [row] = await db
       .select()
@@ -228,6 +230,7 @@ describe("runTurn", () => {
     const chat = new MockLanguageModelV4({ doStream: textStream("should not run") });
     const { result } = await turn({ classify: broken, chat }, userMsg("I want to end my life"));
     expect(result.text).toBe(SAFETY);
+    expect(result.safety).toBe(true);
     expect(broken.doGenerateCalls).toHaveLength(0);
     expect(chat.doStreamCalls).toHaveLength(0);
   });
@@ -237,6 +240,7 @@ describe("runTurn", () => {
     const chat = new MockLanguageModelV4({ doStream: textStream("should not run") });
     const { result } = await turn({ classify, chat }, userMsg("I want to end my life"));
     expect(result.text).toBe(SAFETY);
+    expect(result.safety).toBe(true);
     expect(classify.doGenerateCalls).toHaveLength(0);
     expect(chat.doStreamCalls).toHaveLength(0);
   });
@@ -252,6 +256,7 @@ describe("runTurn", () => {
       },
     });
     expect(result.text).toBe(SAFETY);
+    expect(result.safety).toBe(true);
     expect(chat.doStreamCalls).toHaveLength(0);
   });
 
@@ -422,7 +427,7 @@ describe("runTurn", () => {
         },
       );
       await readUIStream(res);
-      expect(result).toMatchObject({ status: "complete", text: SAFETY });
+      expect(result).toMatchObject({ status: "complete", text: SAFETY, safety: true });
       expect((await recentMessages(db, "u1", result?.sessionId ?? "")).map((m) => m.role)).toEqual([
         "user",
         "assistant",

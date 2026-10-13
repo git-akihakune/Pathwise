@@ -75,7 +75,6 @@ export function Chat({
   screen,
   prompt,
   timeZone,
-  readOnly,
 }: {
   initialMessages: CoachUIMessage[];
   initialProposals: Record<string, ProposalView>;
@@ -83,7 +82,6 @@ export function Chat({
   screen: Screen;
   prompt: string;
   timeZone: string;
-  readOnly: boolean;
 }) {
   const topicRef = useRef<string | null>(null);
   const [transport] = useState(
@@ -115,7 +113,7 @@ export function Chat({
 
   const busy = status === "submitted" || status === "streaming";
   const send = (text: string) => {
-    if (busy || readOnly || !text.trim()) return;
+    if (busy || !text.trim()) return;
     void sendMessage({ text });
     setTopic(null);
   };
@@ -218,7 +216,7 @@ export function Chat({
                   role={m.role}
                   proposals={proposals}
                   send={send}
-                  busy={busy || readOnly}
+                  busy={busy}
                 />
               ))}
             </div>
@@ -228,7 +226,7 @@ export function Chat({
       {status === "submitted" && (
         <p className="text-sm text-muted-foreground">Coach is thinking…</p>
       )}
-      {!readOnly && error && (
+      {error && (
         <Alert variant="destructive">
           <AlertDescription className="flex items-center justify-between gap-4">
             {error.message}
@@ -238,7 +236,7 @@ export function Chat({
           </AlertDescription>
         </Alert>
       )}
-      {!readOnly && interrupted && last && (
+      {interrupted && last && (
         <div className="flex items-center gap-3 text-sm">
           <span>This reply was interrupted.</span>
           <Button
@@ -251,7 +249,7 @@ export function Chat({
           </Button>
         </div>
       )}
-      {!readOnly && unanswered && (
+      {unanswered && (
         <div className="flex items-center gap-3 text-sm">
           <span>This message didn't get a reply.</span>
           <Button type="button" size="sm" variant="outline" onClick={() => regenerate()}>
@@ -259,60 +257,58 @@ export function Chat({
           </Button>
         </div>
       )}
-      {!readOnly && (
-        <div className="flex flex-col gap-2 border-t pt-4">
-          {topic ? (
-            <div className="flex items-center gap-3 text-sm">
-              <span>Your next message starts a focused session: {topic}</span>
-              <Button type="button" size="sm" variant="ghost" onClick={cancelTopic}>
-                Cancel
-              </Button>
-            </div>
-          ) : topicDraft !== null ? (
-            <div className="flex items-end gap-2">
-              <Label className="flex-col items-start gap-1">
-                Topic
-                <Input
-                  value={topicDraft}
-                  maxLength={80}
-                  onChange={(e) => setTopicDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      startTopic();
-                    }
-                  }}
-                />
-              </Label>
-              <Button type="button" size="sm" onClick={startTopic}>
-                Start session
-              </Button>
-              <Button type="button" size="sm" variant="ghost" onClick={() => setTopicDraft(null)}>
-                Cancel
-              </Button>
-            </div>
-          ) : (
-            <div>
-              <Button type="button" size="sm" variant="outline" onClick={() => setTopicDraft("")}>
-                New focused session
-              </Button>
-            </div>
-          )}
-          <form onSubmit={submit} className="flex items-end gap-2">
-            <Textarea
-              aria-label="Message"
-              placeholder="Tell your coach what's on your mind…"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={onKeyDown}
-              maxLength={20000}
-            />
-            <Button type="submit" disabled={busy}>
-              Send
+      <div className="flex flex-col gap-2 border-t pt-4">
+        {topic ? (
+          <div className="flex items-center gap-3 text-sm">
+            <span>Your next message starts a focused session: {topic}</span>
+            <Button type="button" size="sm" variant="ghost" onClick={cancelTopic}>
+              Cancel
             </Button>
-          </form>
-        </div>
-      )}
+          </div>
+        ) : topicDraft !== null ? (
+          <div className="flex items-end gap-2">
+            <Label className="flex-col items-start gap-1">
+              Topic
+              <Input
+                value={topicDraft}
+                maxLength={80}
+                onChange={(e) => setTopicDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    startTopic();
+                  }
+                }}
+              />
+            </Label>
+            <Button type="button" size="sm" onClick={startTopic}>
+              Start session
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setTopicDraft(null)}>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <div>
+            <Button type="button" size="sm" variant="outline" onClick={() => setTopicDraft("")}>
+              New focused session
+            </Button>
+          </div>
+        )}
+        <form onSubmit={submit} className="flex items-end gap-2">
+          <Textarea
+            aria-label="Message"
+            placeholder="Tell your coach what's on your mind…"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={onKeyDown}
+            maxLength={20000}
+          />
+          <Button type="submit" disabled={busy}>
+            Send
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

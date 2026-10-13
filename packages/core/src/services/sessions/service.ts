@@ -248,7 +248,27 @@ export async function deleteRepliesAfter(
       .where(and(later, eq(messages.role, "user")))
       .limit(1);
     if (newer) throw new ConflictError("Only the latest message can be retried.");
+    const [marks] = await tx
+      .select({
+        curated: sessions.curatedThroughMessageId,
+        summarized: sessions.summarizedThroughMessageId,
+      })
+      .from(sessions)
+      .where(eq(sessions.id, msg.sessionId))
+      .for("update");
+    const doomed = new Set(
+      (await tx.select({ id: messages.id }).from(messages).where(later)).map((r) => r.id),
+    );
     await tx.delete(messages).where(later);
+    // ON DELETE SET NULL would reset the watermarks and re-process the whole session.
+    const moved: Partial<typeof sessions.$inferInsert> = {};
+    if (marks?.curated && doomed.has(marks.curated)) moved.curatedThroughMessageId = userMessageId;
+    if (marks?.summarized && doomed.has(marks.summarized)) {
+      moved.summarizedThroughMessageId = userMessageId;
+    }
+    if (Object.keys(moved).length > 0) {
+      await tx.update(sessions).set(moved).where(eq(sessions.id, msg.sessionId));
+    }
     return { sessionId: msg.sessionId };
   });
 }

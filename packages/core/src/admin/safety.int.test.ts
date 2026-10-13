@@ -59,3 +59,10 @@ it("accepts upper-case schemes and still rejects non-http schemes", async () => 
     setSafetyResources(db, "adm", [{ name: "X", url: "ftp://example.org" }]),
   ).rejects.toThrow("Each resource needs a name and an http(s) URL.");
 });
+it("rejects URLs that would break the safety response link", async () => {
+  for (const url of ["https://x.org/a>b", "https://x.org/<b", "https://x.org/a b"]) {
+    await expect(setSafetyResources(db, "adm", [{ name: "X", url }])).rejects.toThrow(
+      "Each resource needs a name and an http(s) URL.",
+    );
+  }
+});

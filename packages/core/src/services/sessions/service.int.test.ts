@@ -126,6 +126,28 @@ describe("messages", () => {
     await appendMessage(db, "u1", s.id, { role: "user", parts: text("newer") });
     await expect(deleteRepliesAfter(db, "u1", u.id)).rejects.toBeInstanceOf(ConflictError);
   });
+  it("regenerating moves watermarks pointing at deleted replies back to the user message", async () => {
+    const s = await getOrStartSession(db, "u1");
+    const u = await appendMessage(db, "u1", s.id, { role: "user", parts: text("hi") });
+    const a = await appendMessage(db, "u1", s.id, { role: "assistant", parts: text("Hello.") });
+    await setCuratedThrough(db, "u1", s.id, a.id);
+    await setSessionSummary(db, "u1", s.id, { summary: "S", throughMessageId: a.id });
+    await deleteRepliesAfter(db, "u1", u.id);
+    expect(await getSessionState(db, "u1", s.id)).toMatchObject({
+      curatedThroughMessageId: u.id,
+      summarizedThroughMessageId: u.id,
+    });
+  });
+  it("regenerating leaves watermarks on earlier messages alone", async () => {
+    const s = await getOrStartSession(db, "u1");
+    const u0 = await appendMessage(db, "u1", s.id, { role: "user", parts: text("first") });
+    await appendMessage(db, "u1", s.id, { role: "assistant", parts: text("reply") });
+    const u = await appendMessage(db, "u1", s.id, { role: "user", parts: text("second") });
+    await setCuratedThrough(db, "u1", s.id, u0.id);
+    await appendMessage(db, "u1", s.id, { role: "assistant", parts: text("reply 2") });
+    await deleteRepliesAfter(db, "u1", u.id);
+    expect((await getSessionState(db, "u1", s.id)).curatedThroughMessageId).toBe(u0.id);
+  });
   it("returns null when retrying an unknown or foreign message", async () => {
     const s = await getOrStartSession(db, "u1");
     const u = await appendMessage(db, "u1", s.id, { role: "user", parts: text("hi") });

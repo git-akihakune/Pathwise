@@ -15,6 +15,23 @@ test("a user without a provider is prompted to connect one", async ({ page }) =>
   ).toBeVisible();
 });
 
+test("without a provider the coach keeps its input: a plain message gets the setup hint, a crisis message gets help (R17)", async ({
+  page,
+}) => {
+  await page.goto("/coach");
+  await expect(page.getByText("The coach needs an AI provider before it can reply.")).toBeVisible();
+  const input = page.getByLabel("Message");
+  await expect(input).toBeEnabled();
+  await input.fill("Help me plan my week");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(
+    page.getByText("Connect an AI provider in Settings to use the coach."),
+  ).toBeVisible();
+  await input.fill("I can't go on anymore");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("link", { name: "Find a Helpline" })).toBeVisible();
+});
+
 test("add, test and activate an OpenAI provider (Review Focus 5)", async ({ page }) => {
   await page.goto("/");
   await page.goto("/settings");

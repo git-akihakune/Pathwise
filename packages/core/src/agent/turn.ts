@@ -86,6 +86,8 @@ export interface TurnResult {
   assistantMessageId: string;
   status: "complete" | "interrupted";
   text: string;
+  /** True when the turn answered with the safety response. */
+  safety: boolean;
 }
 
 const CURATE_DELAY_SECONDS = 1800;
@@ -320,6 +322,7 @@ export async function runTurn(
         assistantMessageId: assistantId,
         status,
         text: replyText,
+        safety: !chat,
       });
     } catch (e) {
       log.error({ userId, sessionId, err: errName(e) }, "onTurnEnd failed");
