@@ -22,7 +22,8 @@
     "e2e": "bash scripts/e2e.sh",
     "dev": "pnpm dev:db && pnpm dev:init && pnpm -w run --parallel \"/^dev:(web|worker)$/\"",
     "taxonomy:build": "tsx scripts/taxonomy/build.ts",
-    "smoke:local": "tsx scripts/smoke-local.ts"
+    "smoke:local": "tsx scripts/smoke-local.ts",
+    "evals": "pnpm --filter @pathwise/evals start"
   },
   "devDependencies": {
     "@ai-sdk/provider": "4.0.26",
