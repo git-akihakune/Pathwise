@@ -18,6 +18,9 @@ Pathwise is an open-source (AGPL-3.0), self-hostable AI career coach. The approv
 - `bash scripts/compose-smoke.sh`: boots the compose stack from scratch and checks it (prints `SMOKE OK`)
 - `pnpm --filter @pathwise/core db:generate` after schema changes
 - `docker compose up` brings up the whole stack from a fresh clone with no `.env` and no manual steps: `postgres`, a one-shot `init` (secrets, migrations, taxonomy import), `web` and `worker`. All of them are containers built from one `Dockerfile` (spec §4.5)
+- `pnpm smoke:local`: manual local-model smoke; needs `LOCAL_LLM_BASE_URL`, optional `LOCAL_LLM_MODEL` (and `LOCAL_LLM_API_KEY` for authenticated endpoints)
+- `pnpm evals`: manual live evals; needs `EVAL_*`. Offline comparison: `pnpm evals compare <base> <head>` (no keys or Docker)
+- Demo: `docker compose exec worker pathwise seed demo` or `SEED_DEMO=true docker compose up`
 - Admin CLI: `docker compose exec worker pathwise <command>` (e.g. `admin reset-password <email>`)
 
 ## Architecture rules
