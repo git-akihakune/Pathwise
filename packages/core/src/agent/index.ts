@@ -6,6 +6,7 @@ export * from "./persona";
 export * from "./plan-summary";
 export * from "./registry";
 export * from "./select";
+export * from "./skills/intake";
 export * from "./stream";
 export * from "./turn";
 

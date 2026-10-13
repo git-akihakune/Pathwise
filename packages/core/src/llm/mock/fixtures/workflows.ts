@@ -43,3 +43,7 @@ export const MOCK_EXTRACTION = {
 };
 
 registerMockFixture("extract.document", () => ({ json: MOCK_EXTRACTION }));
+
+registerMockFixture("onboarding.snapshot", () => ({
+  text: "Here's what I heard: you're an experienced nurse who values autonomy and wants to move toward healthcare data.",
+}));
