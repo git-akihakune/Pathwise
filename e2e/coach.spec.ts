@@ -7,8 +7,8 @@ test.describe.configure({ mode: "serial" });
 test.beforeEach(async ({ page }) => {
   await ensureMockProvider(page);
   await page.goto("/");
-  await page.getByRole("link", { name: "Coach", exact: true }).click(); // Today also has "Open Coach"
-  await expect(page.getByRole("heading", { name: "Coach" })).toBeVisible();
+  await page.getByRole("link", { name: "Coach", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Coach", exact: true })).toBeVisible();
 });
 const send = async (page: Page, text: string) => {
   await page.getByLabel("Message").fill(text);
