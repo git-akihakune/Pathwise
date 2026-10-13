@@ -7,6 +7,8 @@ import type { AppConfig } from "../config";
 import { type Db, schema } from "../db";
 import { getInstanceSettings } from "../instance";
 import { findUsableInvite, markInviteUsed, normalizeEmail } from "../invites";
+import { createLogger } from "../logger";
+import { type Mailer, renderPasswordResetEmail, renderVerificationEmail } from "../mail";
 import { evaluateSignup, type InviteCheck } from "./policy";
 import { getSignupContext } from "./signup-context";
 
@@ -24,8 +26,20 @@ export function createAuth(deps: {
   db: Db;
   config: Pick<AppConfig, "appUrl" | "betterAuthSecret">;
   plugins?: BetterAuthPlugin[];
+  mailer?: Mailer;
 }) {
-  const { db, config } = deps;
+  const { db, config, mailer } = deps;
+  const log = createLogger("auth");
+  // Fire-and-forget so SMTP trouble never fails sign-up or leaks (via timing) whether an account exists.
+  // Logs carry no URLs or tokens.
+  const fire = (to: string, rendered: Promise<{ subject: string; html: string; text: string }>) => {
+    if (!mailer?.enabled) return;
+    void rendered
+      .then((r) => mailer.send({ to, ...r }))
+      .catch((err) =>
+        log.error({ err: err instanceof Error ? err.name : "error" }, "auth email failed"),
+      );
+  };
   return betterAuth({
     baseURL: config.appUrl,
     secret: config.betterAuthSecret,
@@ -38,7 +52,20 @@ export function createAuth(deps: {
       enabled: true,
       minPasswordLength: MIN_PASSWORD_LENGTH,
       autoSignIn: true,
+      ...(mailer?.enabled && {
+        sendResetPassword: async ({ user, url }) =>
+          fire(user.email, renderPasswordResetEmail({ name: user.name, url })),
+      }),
     },
+    ...(mailer?.enabled && {
+      // Not required (requireEmailVerification unset): adding SMTP later must not lock anyone out.
+      emailVerification: {
+        sendOnSignUp: true,
+        autoSignInAfterVerification: true,
+        sendVerificationEmail: async ({ user, url }) =>
+          fire(user.email, renderVerificationEmail({ name: user.name, url })),
+      },
+    }),
     rateLimit: { enabled: process.env.NODE_ENV !== "test", storage: "memory" },
     plugins: [admin({ defaultRole: "user" }), ...(deps.plugins ?? [])],
     databaseHooks: {

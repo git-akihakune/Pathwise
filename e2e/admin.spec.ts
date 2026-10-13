@@ -40,3 +40,14 @@ test("a non-admin cannot open the admin page", async ({ browser }) => {
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/$/);
 });
+test("admin sees that email is not configured", async ({ page }) => {
+  await signIn(page, "ada@example.com", "a-very-long-password");
+  await page.goto("/admin");
+  await expect(
+    page.getByText(
+      "Email is not configured. Check-ins are in-app only, and password resets need the CLI.",
+    ),
+  ).toBeVisible();
+  await page.goto("/sign-in");
+  await expect(page.getByRole("link", { name: "Forgot password?" })).toHaveCount(0);
+});

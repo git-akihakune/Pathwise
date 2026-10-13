@@ -2,6 +2,7 @@
 
 import { inviteUser, revokeInvite, setSafetyResources, setSignupMode } from "@pathwise/core/admin";
 import type { SignupMode } from "@pathwise/core/instance";
+import { renderInviteEmail } from "@pathwise/core/mail";
 import {
   getInstanceProviderConfig,
   setInstanceProviderConfig,
@@ -14,7 +15,9 @@ import { getServer } from "@/lib/server";
 import { requireAdmin } from "@/lib/session";
 import type { ProviderFormState } from "../settings/actions";
 
-export type InviteState = { error?: string; link?: string } | undefined;
+export type InviteState =
+  | { error?: string; link?: string; email?: string; emailed?: boolean; emailFailed?: boolean }
+  | undefined;
 
 const MODES: readonly string[] = ["open", "invite_only", "closed"] satisfies SignupMode[];
 
@@ -29,13 +32,23 @@ export async function createInviteAction(
   _prev: InviteState,
   formData: FormData,
 ): Promise<InviteState> {
-  const { userId } = await requireAdmin();
+  const { userId, name } = await requireAdmin();
   const email = String(formData.get("email") ?? "").trim();
   if (!email.includes("@")) return { error: "Enter a valid email address." };
-  const { db, config } = getServer();
+  const { db, config, mailer } = getServer();
   const { token } = await inviteUser(db, userId, email);
   revalidatePath("/admin");
-  return { link: `${config.appUrl}/invite/${token}` };
+  const link = `${config.appUrl}/invite/${token}`;
+  if (!mailer.enabled) return { link };
+  try {
+    await mailer.send({
+      to: email,
+      ...(await renderInviteEmail({ inviterName: name, url: link })),
+    });
+    return { link, email, emailed: true };
+  } catch {
+    return { link, email, emailFailed: true };
+  }
 }
 
 export async function revokeInviteAction(formData: FormData): Promise<void> {

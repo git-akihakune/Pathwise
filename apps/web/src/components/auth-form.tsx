@@ -14,9 +14,11 @@ type Props = {
   inviteToken?: string;
   /** Pre-filled, read-only email (invitation sign-up). */
   fixedEmail?: string;
+  /** Post-sign-in return path; the server re-validates it with safeNext. */
+  next?: string;
 };
 
-export function AuthForm({ action, submitLabel, withName, inviteToken, fixedEmail }: Props) {
+export function AuthForm({ action, submitLabel, withName, inviteToken, fixedEmail, next }: Props) {
   const [state, formAction, pending] = useActionState(action, undefined);
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -54,6 +56,7 @@ export function AuthForm({ action, submitLabel, withName, inviteToken, fixedEmai
           required
         />
       </div>
+      {next && <input type="hidden" name="next" value={next} />}
       {inviteToken && <input type="hidden" name="inviteToken" value={inviteToken} />}
       {state?.error && <Alert variant="destructive">{state.error}</Alert>}
       <Button type="submit" disabled={pending}>

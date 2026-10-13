@@ -4,6 +4,7 @@ import { MODEL_SUGGESTIONS } from "@pathwise/core/llm";
 import { getInstanceProviderConfig } from "@pathwise/core/services/providers";
 import { usageByUser } from "@pathwise/core/services/usage";
 import { connection } from "next/server";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,6 +43,12 @@ export default async function AdminPage() {
   return (
     <section className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Admin</h1>
+
+      {config.smtp === null && (
+        <Alert>
+          Email is not configured. Check-ins are in-app only, and password resets need the CLI.
+        </Alert>
+      )}
 
       <section aria-labelledby="instance-provider-heading">
         <Card>

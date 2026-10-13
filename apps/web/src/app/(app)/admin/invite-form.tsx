@@ -33,6 +33,12 @@ export function InviteForm() {
               Copy
             </Button>
           </div>
+          {state.emailed && <p className="text-sm">We also emailed this link to {state.email}.</p>}
+          {state.emailFailed && (
+            <Alert variant="destructive">
+              The email didn't go through; share the link directly.
+            </Alert>
+          )}
           <p className="text-sm text-muted-foreground">
             Share this link directly. It expires in 7 days and can be used once.
           </p>

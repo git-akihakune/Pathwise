@@ -23,8 +23,9 @@ export function getServer(): Server {
   if (!globalForServer.__pathwiseServer) {
     const config = loadConfig();
     const { db } = createDb(config.databaseUrl);
-    const auth = createAuth({ db, config, plugins: [nextCookies()] });
-    globalForServer.__pathwiseServer = { config, db, auth, mailer: mailerFor(config) };
+    const mailer = mailerFor(config);
+    const auth = createAuth({ db, config, plugins: [nextCookies()], mailer });
+    globalForServer.__pathwiseServer = { config, db, auth, mailer };
   }
   return globalForServer.__pathwiseServer;
 }
