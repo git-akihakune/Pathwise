@@ -1,6 +1,14 @@
 "use server";
 
-import { inviteUser, revokeInvite, setSafetyResources, setSignupMode } from "@pathwise/core/admin";
+import {
+  discardDeadLetter,
+  inviteUser,
+  retryDeadLetter,
+  revokeInvite,
+  setSafetyResources,
+  setSignupMode,
+} from "@pathwise/core/admin";
+import { NotFoundError } from "@pathwise/core/errors";
 import type { SignupMode } from "@pathwise/core/instance";
 import { createLogger } from "@pathwise/core/logger";
 import { mailErrorFields, renderInviteEmail } from "@pathwise/core/mail";
@@ -11,6 +19,7 @@ import {
 } from "@pathwise/core/services/providers";
 import { revalidatePath } from "next/cache";
 import { toFormError } from "@/lib/form-error";
+import { getJobAdmin } from "@/lib/jobs";
 import { parseProviderInput } from "@/lib/provider-input";
 import { getServer } from "@/lib/server";
 import { requireAdmin } from "@/lib/session";
@@ -122,4 +131,30 @@ export async function saveSafetyResourcesAction(
   } finally {
     revalidatePath("/admin");
   }
+}
+
+export async function retryDeadLetterAction(formData: FormData): Promise<void> {
+  const { userId } = await requireAdmin();
+  try {
+    await retryDeadLetter(getServer().db, await getJobAdmin(), userId, {
+      queue: String(formData.get("queue") ?? ""),
+      id: String(formData.get("id") ?? ""),
+    });
+  } catch (e) {
+    if (!(e instanceof NotFoundError)) throw e;
+  }
+  revalidatePath("/admin");
+}
+
+export async function discardDeadLetterAction(formData: FormData): Promise<void> {
+  const { userId } = await requireAdmin();
+  try {
+    await discardDeadLetter(getServer().db, await getJobAdmin(), userId, {
+      queue: String(formData.get("queue") ?? ""),
+      id: String(formData.get("id") ?? ""),
+    });
+  } catch (e) {
+    if (!(e instanceof NotFoundError)) throw e;
+  }
+  revalidatePath("/admin");
 }

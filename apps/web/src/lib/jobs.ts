@@ -1,5 +1,5 @@
 import "server-only";
-import { type JobQueue, pgBossQueue } from "@pathwise/core/jobs";
+import { type JobAdmin, type JobQueue, pgBossJobAdmin, pgBossQueue } from "@pathwise/core/jobs";
 import { createLogger } from "@pathwise/core/logger";
 import { PgBoss } from "pg-boss";
 import { getServer } from "./server";
@@ -31,4 +31,8 @@ export function getBoss(): Promise<PgBoss> {
 
 export function getJobQueue(): JobQueue {
   return { send: async (...a) => pgBossQueue(await getBoss()).send(...a) };
+}
+
+export async function getJobAdmin(): Promise<JobAdmin> {
+  return pgBossJobAdmin(await getBoss());
 }

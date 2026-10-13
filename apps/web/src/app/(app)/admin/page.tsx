@@ -1,4 +1,4 @@
-import { listInvites, listUsers } from "@pathwise/core/admin";
+import { getJobHealth, listInvites, listUsers } from "@pathwise/core/admin";
 import { getInstanceSettings, getSafetyResources } from "@pathwise/core/instance";
 import { MODEL_SUGGESTIONS } from "@pathwise/core/llm";
 import { getInstanceProviderConfig } from "@pathwise/core/services/providers";
@@ -16,11 +16,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { getJobAdmin } from "@/lib/jobs";
 import { getServer } from "@/lib/server";
 import { requireAdmin } from "@/lib/session";
 import { revokeInviteAction } from "./actions";
 import { InstanceProvider } from "./instance-provider";
 import { InviteForm } from "./invite-form";
+import { JobHealth } from "./job-health";
 import { SafetyResourcesForm } from "./safety-resources-form";
 import { SignupModeSelect } from "./signup-mode-select";
 
@@ -31,14 +33,16 @@ export default async function AdminPage() {
   await connection();
   const { userId } = await requireAdmin();
   const { db, config } = getServer();
-  const [users, invites, settings, instanceProvider, usage, safetyResources] = await Promise.all([
-    listUsers(db, userId),
-    listInvites(db, userId),
-    getInstanceSettings(db),
-    getInstanceProviderConfig(db, userId),
-    usageByUser(db, userId, new Date(Date.now() - 30 * DAY_MS)),
-    getSafetyResources(db),
-  ]);
+  const [users, invites, settings, instanceProvider, usage, safetyResources, jobHealth] =
+    await Promise.all([
+      listUsers(db, userId),
+      listInvites(db, userId),
+      getInstanceSettings(db),
+      getInstanceProviderConfig(db, userId),
+      usageByUser(db, userId, new Date(Date.now() - 30 * DAY_MS)),
+      getSafetyResources(db),
+      getJobAdmin().then((jobs) => getJobHealth(db, jobs, userId)),
+    ]);
 
   return (
     <section className="flex flex-col gap-6">
@@ -66,6 +70,8 @@ export default async function AdminPage() {
           </CardContent>
         </Card>
       </section>
+
+      <JobHealth {...jobHealth} users={users} />
 
       <section aria-labelledby="usage-heading">
         <Card>

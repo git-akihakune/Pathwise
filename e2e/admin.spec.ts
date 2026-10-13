@@ -1,15 +1,8 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { signIn } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 let inviteUrl = "";
-
-async function signIn(page: Page, email: string, password: string) {
-  await page.goto("/sign-in");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("heading", { name: /^Welcome, / })).toBeVisible();
-}
 
 test("admin invites a user", async ({ page }) => {
   await signIn(page, "ada@example.com", "a-very-long-password");
@@ -50,4 +43,12 @@ test("admin sees that email is not configured", async ({ page }) => {
   ).toBeVisible();
   await page.goto("/sign-in");
   await expect(page.getByRole("link", { name: "Forgot password?" })).toHaveCount(0);
+});
+
+test("admin sees job queue health", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/admin");
+  await expect(page.getByRole("heading", { name: "Job queue", exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "session.curate", exact: true })).toBeVisible();
+  await expect(page.getByText("No dead-lettered jobs.", { exact: true })).toBeVisible();
 });
