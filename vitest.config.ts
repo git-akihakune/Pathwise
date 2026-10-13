@@ -6,6 +6,7 @@ export default defineConfig({
       {
         test: {
           name: "unit",
+          maxWorkers: 1,
           include: ["**/src/**/*.test.ts", "scripts/**/*.test.ts"],
           exclude: [...configDefaults.exclude, "**/*.int.test.ts"],
         },

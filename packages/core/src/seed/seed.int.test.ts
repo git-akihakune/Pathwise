@@ -11,6 +11,7 @@ import { actionsForWeek, getActivePlan } from "../services/plan";
 import { createExperience, getProfile } from "../services/profile";
 import { listProposals } from "../services/proposals";
 import { listConversation } from "../services/sessions";
+import { getUserSettings } from "../services/settings";
 import { listStories } from "../services/stories";
 import { getOnboardingState } from "../workflows";
 import { DEMO_EMAIL, seedDemo } from ".";
@@ -72,8 +73,25 @@ describe("seedDemo", () => {
       "General Manager",
     ]);
     expect(profile.education).toHaveLength(2);
+    expect(profile.education).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ institution: "University of Leeds", field: "Psychology" }),
+      ]),
+    );
+    expect(await getUserSettings(db, r.userId)).toMatchObject({
+      timezone: "Europe/London",
+      bluntness: 3,
+    });
     expect(profile.skills).toHaveLength(7);
     expect(await listStories(db, r.userId)).toHaveLength(2);
+    expect(await listStories(db, r.userId)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Fixing the guest feedback loop",
+          metrics: "−30% complaints in 6 months",
+        }),
+      ]),
+    );
     expect((await listPaths(db, r.userId)).map((p) => [p.title, p.status])).toEqual(
       expect.arrayContaining([
         ["UX Researcher via a customer-insights bridge role", "chosen"],
@@ -90,10 +108,27 @@ describe("seedDemo", () => {
     const convo = await listConversation(db, r.userId);
     expect(convo).toHaveLength(2);
     expect(convo.flatMap((c) => c.messages)).toHaveLength(8);
+    expect(convo[0]?.messages[1]).toMatchObject({
+      role: "assistant",
+      metadata: { createdAt: "2026-10-08T09:01:00.000Z" },
+      parts: [
+        {
+          type: "text",
+          text: "Ten years is a lot of experience to build on. When you think about the parts of the job you'd miss, what comes to mind first?",
+        },
+      ],
+    });
     expect(convo[0]?.session.startedAt.getTime()).toBeLessThan(NOW.getTime() - 5 * 86_400_000); // backdated
     expect(await getOnboardingState(db, r.userId)).toBe("completed"); // Today shows no setup card
     expect(await listMemory(db, r.userId, { status: ["active"] })).toHaveLength(7);
-    expect(await listMemory(db, r.userId, { status: ["pending"] })).toHaveLength(1);
+    expect(await listMemory(db, r.userId, { status: ["pending"] })).toEqual([
+      expect.objectContaining({
+        category: "observation",
+        content: "Seems worried that a career change could strain the family budget.",
+        sensitive: true,
+        status: "pending",
+      }),
+    ]);
     expect(await listProposals(db, r.userId, { status: ["pending"] })).toHaveLength(1);
   });
   it("is idempotent", async () => {
