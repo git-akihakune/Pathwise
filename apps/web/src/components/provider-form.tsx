@@ -3,10 +3,11 @@
 import type { ProviderConfigView } from "@pathwise/core/services/providers";
 import { useActionState, useState } from "react";
 import type { ProviderFormState } from "@/app/(app)/settings/actions";
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SecretInput } from "@/components/ui/secret-input";
 import {
   Select,
   SelectContent,
@@ -14,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { recoverFormAction } from "@/lib/form-recovery";
 
 export type ModelSuggestions = Record<string, { main: string; fast: string; embedding?: string }>;
 type Kind = ProviderConfigView["kind"];
@@ -45,7 +47,7 @@ export function ProviderForm({
   action: (prev: ProviderFormState, fd: FormData) => Promise<ProviderFormState>;
   onCancel?: () => void;
 }) {
-  const [state, formAction, pending] = useActionState(action, undefined);
+  const [state, formAction, pending] = useActionState(recoverFormAction(action), undefined);
   const [kind, setKind] = useState<Kind>(initial?.kind ?? "anthropic");
   const [models, setModels] = useState({
     // Suggestions prefill only a new config; an edit keeps exactly what was saved.
@@ -73,7 +75,13 @@ export function ProviderForm({
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <Form
+      noValidate
+      result={state}
+      error={state?.error}
+      action={formAction}
+      className="flex flex-col gap-4"
+    >
       <h3 className="font-medium">{editing ? "Edit provider" : "Add a provider"}</h3>
       {initial && <input type="hidden" name="id" value={initial.id} />}
 
@@ -120,10 +128,10 @@ export function ProviderForm({
 
       <div className={field}>
         <Label htmlFor="provider-api-key">API key</Label>
-        <Input
+        <SecretInput
+          secretLabel="API key"
           id="provider-api-key"
           name="apiKey"
-          type="password"
           autoComplete="off"
           placeholder={
             editing ? "Leave blank to keep the current key" : custom ? "Optional" : undefined
@@ -198,9 +206,8 @@ export function ProviderForm({
         </div>
       )}
 
-      {state?.error && <Alert variant="destructive">{state.error}</Alert>}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={pending}>
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={pending} aria-busy={pending}>
           Save and test
         </Button>
         {editing && (
@@ -209,6 +216,6 @@ export function ProviderForm({
           </Button>
         )}
       </div>
-    </form>
+    </Form>
   );
 }

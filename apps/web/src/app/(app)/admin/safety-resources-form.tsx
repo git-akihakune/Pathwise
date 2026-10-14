@@ -1,10 +1,11 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { recoverFormAction } from "@/lib/form-recovery";
 import { saveSafetyResourcesAction } from "./actions";
 
 type Row = { key: number; name: string; url: string };
@@ -12,14 +13,26 @@ type Row = { key: number; name: string; url: string };
 export function SafetyResourcesForm({ resources }: { resources: { name: string; url: string }[] }) {
   const nextKey = useRef(resources.length);
   const [rows, setRows] = useState<Row[]>(resources.map((r, key) => ({ key, ...r })));
-  const [state, action, pending] = useActionState(saveSafetyResourcesAction, undefined);
+  const [state, action, pending] = useActionState(
+    recoverFormAction(saveSafetyResourcesAction),
+    undefined,
+  );
   const update = (key: number, patch: Partial<Row>) =>
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <Form
+      noValidate
+      trackChanges={false}
+      dirty={
+        JSON.stringify(rows.map(({ name, url }) => ({ name, url }))) !== JSON.stringify(resources)
+      }
+      result={state}
+      action={action}
+      className="flex flex-col gap-4"
+    >
       {rows.map((row, i) => (
-        <div key={row.key} className="flex items-end gap-2">
+        <div key={row.key} className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-2">
             <Label htmlFor={`safety-name-${row.key}`}>Resource name {i + 1}</Label>
             <Input
@@ -62,12 +75,15 @@ export function SafetyResourcesForm({ resources }: { resources: { name: string; 
         >
           Add resource
         </Button>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending} aria-busy={pending}>
           Save safety resources
         </Button>
-        {state?.saved && <span className="text-sm text-muted-foreground">Saved.</span>}
+        {state?.saved && (
+          <span role="status" className="text-sm text-muted-foreground">
+            Saved.
+          </span>
+        )}
       </div>
-      {state?.error && <Alert variant="destructive">{state.error}</Alert>}
-    </form>
+    </Form>
   );
 }

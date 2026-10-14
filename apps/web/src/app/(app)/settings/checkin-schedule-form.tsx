@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
+import { recoverFormAction } from "@/lib/form-recovery";
 import { type CheckinScheduleState, saveCheckinScheduleAction } from "./actions";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -23,16 +24,16 @@ export function CheckinScheduleForm({
   smtpConfigured: boolean;
 }) {
   const [state, action, pending] = useActionState<CheckinScheduleState, FormData>(
-    saveCheckinScheduleAction,
+    recoverFormAction(saveCheckinScheduleAction),
     undefined,
   );
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <Form noValidate result={state} action={action} className="flex flex-col gap-4">
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="enabled" defaultChecked={enabled} />
         Weekly check-ins
       </label>
-      <div className="flex gap-4">
+      <div className="flex flex-wrap gap-4">
         <div className="flex flex-col gap-2">
           <label htmlFor="checkin-day" className="text-sm font-medium">
             Day
@@ -73,19 +74,18 @@ export function CheckinScheduleForm({
           Email isn't set up on this instance, so check-ins appear in the app only.
         </p>
       )}
-      {state?.error && <Alert variant="destructive">{state.error}</Alert>}
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending} aria-busy={pending}>
           Save check-in schedule
         </Button>
         {state?.saved && (
-          <span className="text-sm text-muted-foreground">
+          <span role="status" className="text-sm text-muted-foreground">
             {state.invited
               ? "Check-in schedule saved. We emailed you a calendar invite."
               : "Check-in schedule saved."}
           </span>
         )}
       </div>
-    </form>
+    </Form>
   );
 }

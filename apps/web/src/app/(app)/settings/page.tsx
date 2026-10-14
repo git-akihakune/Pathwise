@@ -1,7 +1,10 @@
+export const metadata = { title: "Settings" };
+
 import { MODEL_SUGGESTIONS } from "@pathwise/core/llm";
 import { getProviderStatusForUser, listProviderConfigs } from "@pathwise/core/services/providers";
 import { effectiveTimezone, getUserSettings } from "@pathwise/core/services/settings";
 import { connection } from "next/server";
+import { PageHeader } from "@/components/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getServer } from "@/lib/server";
@@ -26,7 +29,10 @@ export default async function SettingsPage() {
 
   return (
     <section className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Settings</h1>
+      <PageHeader
+        title="Settings"
+        description="Make this workspace work for you. Your provider, your coach, your rhythm."
+      />
       {config.llmMode === "mock" && (
         <Alert>Mock mode: AI replies are simulated (LLM_MODE=mock).</Alert>
       )}

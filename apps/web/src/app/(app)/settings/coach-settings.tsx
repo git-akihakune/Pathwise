@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
+import { recoverFormAction } from "@/lib/form-recovery";
 import { type CoachSettingsState, saveCoachSettingsAction } from "./actions";
 
 const BLUNTNESS = ["Gentle", "Soft", "Balanced", "Direct", "Blunt"];
@@ -17,17 +18,17 @@ export function CoachSettings({
   timezones: string[];
 }) {
   const [state, action, pending] = useActionState<CoachSettingsState, FormData>(
-    saveCoachSettingsAction,
+    recoverFormAction(saveCoachSettingsAction),
     undefined,
   );
   // Node's supportedValuesOf omits "UTC", so offer it explicitly.
   const all = timezones.includes("UTC") ? timezones : ["UTC", ...timezones];
   const zones = timezone && !all.includes(timezone) ? [timezone, ...all] : all;
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <Form noValidate result={state} action={action} className="flex flex-col gap-4">
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 text-sm font-medium">Bluntness</legend>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
           {BLUNTNESS.map((name, i) => (
             <label key={name} className="flex items-center gap-2 text-sm">
               <input
@@ -59,13 +60,16 @@ export function CoachSettings({
           ))}
         </select>
       </div>
-      {state?.error && <Alert variant="destructive">{state.error}</Alert>}
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending} aria-busy={pending}>
           Save coach settings
         </Button>
-        {state?.saved && <span className="text-sm text-muted-foreground">Saved.</span>}
+        {state?.saved && (
+          <span role="status" className="text-sm text-muted-foreground">
+            Saved.
+          </span>
+        )}
       </div>
-    </form>
+    </Form>
   );
 }

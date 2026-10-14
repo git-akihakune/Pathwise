@@ -1,8 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -13,21 +12,26 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { recoverFormAction } from "@/lib/form-recovery";
 import { deleteAccountAction } from "./actions";
 
 export function DeleteAccountDialog({ email }: { email: string }) {
   const [confirmEmail, setConfirmEmail] = useState("");
-  const [state, action, pending] = useActionState(deleteAccountAction, undefined);
+  const [state, action, pending] = useActionState(
+    recoverFormAction(deleteAccountAction),
+    undefined,
+  );
   const matches = confirmEmail.trim().toLowerCase() === email.trim().toLowerCase();
 
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="destructive" className="self-start">
-          Delete account
-        </Button>
+      <DialogTrigger
+        className={buttonVariants({ variant: "destructive", className: "self-start" })}
+      >
+        Delete account
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -37,7 +41,7 @@ export function DeleteAccountDialog({ email }: { email: string }) {
             It cannot be undone. Download your data first if you want a copy.
           </DialogDescription>
         </DialogHeader>
-        <form action={action} className="flex flex-col gap-4">
+        <Form noValidate result={state} action={action} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="confirm-email">Type your email to confirm</Label>
             <Input
@@ -48,10 +52,9 @@ export function DeleteAccountDialog({ email }: { email: string }) {
               onChange={(event) => setConfirmEmail(event.target.value)}
             />
           </div>
-          {state?.error && <Alert variant="destructive">{state.error}</Alert>}
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={pending}>
+              <Button type="button" variant="outline" disabled={pending} aria-busy={pending}>
                 Cancel
               </Button>
             </DialogClose>
@@ -59,7 +62,7 @@ export function DeleteAccountDialog({ email }: { email: string }) {
               {pending ? "Deleting…" : "Delete my account"}
             </Button>
           </DialogFooter>
-        </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

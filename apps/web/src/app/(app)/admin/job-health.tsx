@@ -2,6 +2,7 @@ import type { AdminUserRow } from "@pathwise/core/admin";
 import type { DeadLetterJob, QueueHealth } from "@pathwise/core/jobs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form } from "@/components/ui/form";
 import {
   Table,
   TableBody,
@@ -79,21 +80,21 @@ export function JobHealth({
                     {job.userId ? (emails.get(job.userId) ?? "deleted user") : "deleted user"}
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      <form action={retryDeadLetterAction}>
+                    <div className="flex flex-wrap gap-2">
+                      <Form noValidate action={retryDeadLetterAction}>
                         <input type="hidden" name="queue" value={job.queue} />
                         <input type="hidden" name="id" value={job.id} />
                         <Button type="submit" variant="outline" size="sm">
                           Retry
                         </Button>
-                      </form>
-                      <form action={discardDeadLetterAction}>
+                      </Form>
+                      <Form noValidate action={discardDeadLetterAction}>
                         <input type="hidden" name="queue" value={job.queue} />
                         <input type="hidden" name="id" value={job.id} />
                         <Button type="submit" variant="outline" size="sm">
                           Discard
                         </Button>
-                      </form>
+                      </Form>
                     </div>
                   </TableCell>
                 </TableRow>

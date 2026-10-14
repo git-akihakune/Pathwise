@@ -1,21 +1,19 @@
+export const metadata = { title: "Admin" };
+
 import { getJobHealth, listInvites, listUsers } from "@pathwise/core/admin";
 import { getInstanceSettings, getSafetyResources } from "@pathwise/core/instance";
 import { MODEL_SUGGESTIONS } from "@pathwise/core/llm";
 import { getInstanceProviderConfig } from "@pathwise/core/services/providers";
 import { usageByUser } from "@pathwise/core/services/usage";
 import { connection } from "next/server";
+import { PageHeader } from "@/components/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Form } from "@/components/ui/form";
+import { PaginatedTable } from "@/components/ui/paginated-table";
+import { TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { getJobAdmin } from "@/lib/jobs";
 import { getServer } from "@/lib/server";
 import { requireAdmin } from "@/lib/session";
@@ -46,7 +44,10 @@ export default async function AdminPage() {
 
   return (
     <section className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Admin</h1>
+      <PageHeader
+        title="Admin"
+        description="Manage this instance, its members, and the services that keep it running."
+      />
 
       {config.smtp === null && (
         <Alert>
@@ -81,33 +82,27 @@ export default async function AdminPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Table aria-label="Usage (last 30 days)">
-              <TableHeader>
+            <PaginatedTable
+              label="Usage (last 30 days)"
+              columns={4}
+              empty="No usage yet."
+              header={
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Input tokens</TableHead>
                   <TableHead>Output tokens</TableHead>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {usage.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-muted-foreground">
-                      No usage yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {usage.map((u) => (
-                  <TableRow key={`${u.userId}-${u.role}`}>
-                    <TableCell>{u.email}</TableCell>
-                    <TableCell>{u.role}</TableCell>
-                    <TableCell>{u.inputTokens.toLocaleString("en-US")}</TableCell>
-                    <TableCell>{u.outputTokens.toLocaleString("en-US")}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+              }
+              rows={usage.map((u) => (
+                <TableRow key={`${u.userId}-${u.role}`}>
+                  <TableCell>{u.email}</TableCell>
+                  <TableCell>{u.role}</TableCell>
+                  <TableCell>{u.inputTokens.toLocaleString("en-US")}</TableCell>
+                  <TableCell>{u.outputTokens.toLocaleString("en-US")}</TableCell>
+                </TableRow>
+              ))}
+            />
           </CardContent>
         </Card>
       </section>
@@ -145,39 +140,40 @@ export default async function AdminPage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <InviteForm />
-          <Table>
-            <TableHeader>
+          <PaginatedTable
+            label="Invites"
+            columns={4}
+            empty="No invitations yet."
+            header={
               <TableRow>
                 <TableHead>Email</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Expires</TableHead>
                 <TableHead />
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invites.map((i) => (
-                <TableRow key={i.id}>
-                  <TableCell>{i.email}</TableCell>
-                  <TableCell>
-                    <Badge variant={i.status === "usable" ? "default" : "secondary"}>
-                      {i.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{date(i.expiresAt)}</TableCell>
-                  <TableCell>
-                    {i.status === "usable" && (
-                      <form action={revokeInviteAction}>
-                        <input type="hidden" name="inviteId" value={i.id} />
-                        <Button type="submit" variant="outline" size="sm">
-                          Revoke
-                        </Button>
-                      </form>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+            }
+            rows={invites.map((i) => (
+              <TableRow key={i.id}>
+                <TableCell>{i.email}</TableCell>
+                <TableCell>
+                  <Badge variant={i.status === "usable" ? "default" : "secondary"}>
+                    {i.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>{date(i.expiresAt)}</TableCell>
+                <TableCell>
+                  {i.status === "usable" && (
+                    <Form noValidate action={revokeInviteAction}>
+                      <input type="hidden" name="inviteId" value={i.id} />
+                      <Button type="submit" variant="outline" size="sm">
+                        Revoke
+                      </Button>
+                    </Form>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          />
         </CardContent>
       </Card>
 
@@ -188,8 +184,11 @@ export default async function AdminPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
+          <PaginatedTable
+            label="Users"
+            columns={5}
+            empty="No users yet."
+            header={
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
@@ -197,30 +196,28 @@ export default async function AdminPage() {
                 <TableHead>Joined</TableHead>
                 <TableHead />
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell>{u.name}</TableCell>
-                  <TableCell>{u.email}</TableCell>
-                  <TableCell>
-                    <Badge variant={u.role === "admin" ? "default" : "secondary"}>{u.role}</Badge>
-                  </TableCell>
-                  <TableCell>{date(u.createdAt)}</TableCell>
-                  <TableCell>
-                    {u.role === "user" && (
-                      <form action={promoteUserAction}>
-                        <input type="hidden" name="userId" value={u.id} />
-                        <Button type="submit" variant="outline" size="sm">
-                          Make admin
-                        </Button>
-                      </form>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+            }
+            rows={users.map((u) => (
+              <TableRow key={u.id}>
+                <TableCell>{u.name}</TableCell>
+                <TableCell>{u.email}</TableCell>
+                <TableCell>
+                  <Badge variant={u.role === "admin" ? "default" : "secondary"}>{u.role}</Badge>
+                </TableCell>
+                <TableCell>{date(u.createdAt)}</TableCell>
+                <TableCell>
+                  {u.role === "user" && (
+                    <Form noValidate action={promoteUserAction}>
+                      <input type="hidden" name="userId" value={u.id} />
+                      <Button type="submit" variant="outline" size="sm">
+                        Make admin
+                      </Button>
+                    </Form>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          />
         </CardContent>
       </Card>
     </section>

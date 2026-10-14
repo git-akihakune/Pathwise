@@ -30,7 +30,7 @@ export function ProbeResults({
       <h3 className="font-medium">Test results for {label}</h3>
       <ul className="flex flex-col gap-1 text-sm">
         {ROWS.map(({ key, label: name }) => (
-          <li key={key} className="flex gap-2">
+          <li key={key} className="flex flex-wrap gap-2">
             <span className="w-64">{name}</span>
             {checks[key].ok ? (
               <span>Passed</span>

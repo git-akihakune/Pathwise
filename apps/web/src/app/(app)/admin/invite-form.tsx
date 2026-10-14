@@ -3,27 +3,28 @@
 import { useActionState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { recoverFormAction } from "@/lib/form-recovery";
 import { createInviteAction } from "./actions";
 
 export function InviteForm() {
-  const [state, action, pending] = useActionState(createInviteAction, undefined);
+  const [state, action, pending] = useActionState(recoverFormAction(createInviteAction), undefined);
   return (
     <div className="flex flex-col gap-4">
-      <form action={action} className="flex items-end gap-2">
+      <Form noValidate result={state} action={action} className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-2">
           <Label htmlFor="invite-email">Invite email</Label>
           <Input id="invite-email" name="email" type="email" required className="w-72" />
         </div>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending} aria-busy={pending}>
           Create invite
         </Button>
-      </form>
-      {state?.error && <Alert variant="destructive">{state.error}</Alert>}
+      </Form>
       {state?.link && (
         <div className="flex flex-col gap-2">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Input readOnly value={state.link} data-testid="invite-link" aria-label="Invite link" />
             <Button
               type="button"

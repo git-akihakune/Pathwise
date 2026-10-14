@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { DeleteAccountDialog } from "./delete-account-dialog";
@@ -16,11 +16,13 @@ export function DataSection({ email }: { email: string }) {
           Download a zip of everything Pathwise stores about you: profile, stories, plan,
           conversations, and uploaded files. API keys are never included.
         </p>
-        <Button asChild className="self-start">
-          <a href="/api/account/export" download>
-            Download my data
-          </a>
-        </Button>
+        <a
+          href="/api/account/export"
+          download
+          className={buttonVariants({ className: "self-start" })}
+        >
+          Download my data
+        </a>
         <DeleteAccountDialog email={email} />
       </CardContent>
     </Card>

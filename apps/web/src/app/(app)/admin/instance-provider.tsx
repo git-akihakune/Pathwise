@@ -56,6 +56,7 @@ export function InstanceProvider({
             size="sm"
             variant="outline"
             disabled={pending}
+            aria-busy={pending}
             onClick={() =>
               start(async () => {
                 setResult(undefined);
