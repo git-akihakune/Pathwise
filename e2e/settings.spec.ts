@@ -38,7 +38,7 @@ test("add, test and activate an OpenAI provider (Review Focus 5)", async ({ page
   await page.getByLabel("Provider", { exact: true }).click();
   await page.getByRole("option", { name: "OpenAI", exact: true }).click();
   await page.getByLabel("Label", { exact: true }).fill("My OpenAI");
-  await page.getByLabel("API key").fill(KEY);
+  await page.getByLabel("API key", { exact: true }).fill(KEY);
   await page.getByLabel("Main model").fill("gpt-main");
   await page.getByLabel("Fast model").fill("gpt-fast");
   await page.getByRole("button", { name: "Save and test" }).click();
@@ -51,7 +51,7 @@ test("add, test and activate an OpenAI provider (Review Focus 5)", async ({ page
   await expect(row.getByText("Active", { exact: true })).toBeVisible();
   await expect(page.getByText(CONNECT)).toHaveCount(0);
   await page.reload();
-  await expect(page.getByLabel("API key")).toHaveValue("");
+  await expect(page.getByLabel("API key", { exact: true })).toHaveValue("");
   expect(await page.content()).not.toContain(KEY);
 });
 

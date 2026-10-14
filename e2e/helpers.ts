@@ -8,7 +8,7 @@ export const ADA = { email: "ada@example.com", password: "a-very-long-password" 
 export async function signIn(page: Page, email = ADA.email, password = ADA.password) {
   await page.goto("/sign-in");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: /^Welcome, / })).toBeVisible();
 }
@@ -27,7 +27,7 @@ export async function ensureMockProvider(page: Page) {
   await page.getByLabel("Provider", { exact: true }).click();
   await page.getByRole("option", { name: "OpenAI", exact: true }).click();
   await page.getByLabel("Label", { exact: true }).fill("Mock OpenAI");
-  await page.getByLabel("API key").fill("sk-test-0000000000009999");
+  await page.getByLabel("API key", { exact: true }).fill("sk-test-0000000000009999");
   await page.getByLabel("Main model").fill("gpt-main");
   await page.getByLabel("Fast model").fill("gpt-fast");
   await page.getByRole("button", { name: "Save and test" }).click();

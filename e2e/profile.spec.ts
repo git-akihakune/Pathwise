@@ -5,7 +5,7 @@ test.describe.configure({ mode: "serial" });
 
 async function openProfile(page: Page) {
   await page.goto("/");
-  await page.getByRole("link", { name: "Profile" }).click();
+  await page.getByRole("link", { name: "Profile", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Profile", level: 1 })).toBeVisible();
 }
 

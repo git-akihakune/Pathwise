@@ -43,7 +43,7 @@ test("the Start check-in link preserves its return path with no cookie or a stal
   await page.goto("/checkin");
   await expect(page).toHaveURL(/\/sign-in\?next=%2Fcheckin$/);
   await page.getByLabel("Email").fill(ADA.email);
-  await page.getByLabel("Password").fill(ADA.password);
+  await page.getByLabel("Password", { exact: true }).fill(ADA.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/checkin$/);
   await expect(page.getByRole("heading", { name: "Weekly check-in" })).toBeVisible();

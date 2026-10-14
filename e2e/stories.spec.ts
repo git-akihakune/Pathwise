@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 
 test("write, edit, and delete a story", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: "Stories" }).click();
+  await page.getByRole("link", { name: "Stories", exact: true }).click();
   await expect(page.getByText("No stories yet.")).toBeVisible();
   await page.getByRole("link", { name: "Add story" }).click();
   await page.getByLabel("Title").fill("Cut report time by 80%");

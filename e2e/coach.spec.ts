@@ -41,3 +41,20 @@ test("crisis messages get the safety response (Review Focus 1)", async ({ page }
   await expect(helplines).toHaveCount(previousCount + 1);
   await expect(helplines.last()).toHaveAttribute("href", "https://findahelpline.com");
 });
+
+test("latest reply remains above the mobile composer", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 700 });
+  const response = page.waitForResponse((reply) => reply.url().endsWith("/api/chat"));
+  await send(page, "Help me think about a small next step.");
+  await response;
+  await expect(page.getByRole("button", { name: "Stop reply" })).toBeHidden();
+  const jump = page.getByRole("button", { name: "Jump to latest" });
+  if (await jump.isVisible()) await jump.click();
+  await expect
+    .poll(async () => {
+      const message = await page.locator(".chat-message").last().boundingBox();
+      const composer = await page.locator(".chat-composer").boundingBox();
+      return (message?.y ?? 0) + (message?.height ?? 0) <= (composer?.y ?? 0);
+    })
+    .toBe(true);
+});

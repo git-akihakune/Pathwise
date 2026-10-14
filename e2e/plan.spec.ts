@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 
 test("create a plan and edit it by hand", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: "Plan" }).click();
+  await page.getByRole("link", { name: "Plan", exact: true }).click();
   await expect(page.getByText("You don't have a plan yet.")).toBeVisible();
   await expect(
     page.getByText("No career paths yet. Ask your coach to suggest some."),

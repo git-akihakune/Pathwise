@@ -16,7 +16,7 @@ test("an invited user downloads their own data", async ({ page, browser }) => {
     const carolPage = await context.newPage();
     await carolPage.goto(inviteUrl);
     await carolPage.getByLabel("Name").fill(carol.name);
-    await carolPage.getByLabel("Password").fill(carol.password);
+    await carolPage.getByLabel("Password", { exact: true }).fill(carol.password);
     await carolPage.getByRole("button", { name: "Create account" }).click();
     await expect(carolPage.getByRole("heading", { name: `Welcome, ${carol.name}` })).toBeVisible();
     await carolPage.goto("/settings");
@@ -81,7 +81,7 @@ test("a user deletes their account and can no longer sign in", async ({ browser 
     await expect(page.getByText("Your account has been deleted.")).toBeVisible();
     await page.goto("/sign-in");
     await page.getByLabel("Email").fill(carol.email);
-    await page.getByLabel("Password").fill(carol.password);
+    await page.getByLabel("Password", { exact: true }).fill(carol.password);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.getByText("Email or password is incorrect.")).toBeVisible();
   } finally {

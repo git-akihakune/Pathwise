@@ -6,7 +6,7 @@ let inviteUrl = "";
 
 test("admin invites a user", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: "Admin" }).click();
+  await page.getByRole("link", { name: "Admin", exact: true }).click();
   await page.getByLabel("Invite email").fill("bob@example.com");
   await page.getByRole("button", { name: "Create invite" }).click();
   inviteUrl = await page.getByTestId("invite-link").inputValue();
@@ -17,10 +17,10 @@ test("invited user signs up via the link", async ({ browser }) => {
   await page.goto(inviteUrl);
   await expect(page.getByLabel("Email")).toHaveValue("bob@example.com");
   await page.getByLabel("Name").fill("Bob");
-  await page.getByLabel("Password").fill("bobs-long-password");
+  await page.getByLabel("Password", { exact: true }).fill("bobs-long-password");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByRole("heading", { name: "Welcome, Bob" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Admin" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Admin", exact: true })).toHaveCount(0);
 });
 test("a used invite link explains itself", async ({ browser }) => {
   const page = await (await browser.newContext()).newPage();

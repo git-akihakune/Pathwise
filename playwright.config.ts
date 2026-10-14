@@ -57,6 +57,12 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
     {
+      name: "ui",
+      testMatch: "ui.spec.ts",
+      dependencies: ["domain-setup"],
+      use: { ...devices["Desktop Chrome"], storageState: ADA_STATE },
+    },
+    {
       name: "domain",
       testMatch: /(profile|stories|plan)\.spec\.ts/,
       dependencies: ["domain-setup"],

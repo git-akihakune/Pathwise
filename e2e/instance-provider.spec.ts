@@ -6,7 +6,7 @@ const CONNECT = "Connect an AI provider to use the coach";
 async function signIn(page: Page, email: string, password: string) {
   await page.goto("/sign-in");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: /^Welcome, / })).toBeVisible();
 }
@@ -26,7 +26,7 @@ test("the admin sets the instance provider and sees usage", async ({ page }) => 
   await section.getByLabel("Provider", { exact: true }).click();
   await page.getByRole("option", { name: "Anthropic", exact: true }).click();
   await section.getByLabel("Label", { exact: true }).fill("Team Anthropic");
-  await section.getByLabel("API key").fill("sk-ant-test-9999");
+  await section.getByLabel("API key", { exact: true }).fill("sk-ant-test-9999");
   await section.getByLabel("Main model").fill("claude-sonnet-5-5");
   await section.getByLabel("Fast model").fill("claude-haiku-5-5");
   await section.getByRole("button", { name: "Save and test" }).click();
