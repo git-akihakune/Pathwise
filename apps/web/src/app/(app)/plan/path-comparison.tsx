@@ -33,8 +33,8 @@ export function PathComparison({ paths }: { paths: CareerPath[] }) {
   const dismissed = paths.filter((p) => p.status === "dismissed");
   const compared = active.filter((p) => ticked.includes(p.id));
   return (
-    <section aria-labelledby="paths-heading" className="flex flex-col gap-3">
-      <h2 id="paths-heading" className="text-lg font-medium">
+    <section aria-labelledby="paths-heading" className="workspace-section flex flex-col gap-4">
+      <h2 id="paths-heading" className="font-heading text-lg font-semibold">
         Career paths
       </h2>
       {error && <Alert variant="destructive">{error}</Alert>}
@@ -44,14 +44,14 @@ export function PathComparison({ paths }: { paths: CareerPath[] }) {
         </p>
       )}
       {active.map((p) => (
-        <article key={p.id} className="flex flex-col gap-2 rounded-md border p-4">
+        <article key={p.id} className="flex flex-col gap-3 rounded-xl border bg-muted/30 p-5">
           <div className="flex items-center gap-2">
             <h3 className="font-medium">{p.title}</h3>
             <Badge variant="secondary">{STATUS_LABEL[p.status]}</Badge>
           </div>
           <p className="text-sm">{p.rationale}</p>
           <p className="text-sm text-muted-foreground">{monthsLabel(p.feasibility.timeMonths)}</p>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <Label className="gap-2">
               <Checkbox
                 aria-label={`Compare ${p.title}`}
@@ -67,6 +67,7 @@ export function PathComparison({ paths }: { paths: CareerPath[] }) {
                 type="button"
                 size="sm"
                 disabled={pending}
+                aria-busy={pending}
                 onClick={() => setStatus(p.id, "chosen")}
               >
                 Choose
@@ -77,6 +78,7 @@ export function PathComparison({ paths }: { paths: CareerPath[] }) {
               variant="outline"
               size="sm"
               disabled={pending}
+              aria-busy={pending}
               onClick={() => setStatus(p.id, "dismissed")}
             >
               Dismiss

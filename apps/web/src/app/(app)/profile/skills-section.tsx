@@ -42,7 +42,7 @@ function SkillForm({ item, onDone }: { item?: Skill; onDone: () => void }) {
         </select>
       </Field>
       <Field label="Evidence">
-        <Textarea name="evidence" defaultValue={item?.evidence ?? ""} />
+        <Textarea className="resize-none" name="evidence" defaultValue={item?.evidence ?? ""} />
       </Field>
     </EntityForm>
   );
@@ -59,7 +59,7 @@ function SkillItem({ item }: { item: Skill }) {
   }
   const link = linkLabel(item.taxonomySkillId);
   return (
-    <li className="flex items-start justify-between gap-4 rounded-md border p-3">
+    <li className="entity-row">
       <div className="flex flex-col gap-1">
         <span className="flex flex-wrap items-center gap-2">
           {item.name}
@@ -71,7 +71,7 @@ function SkillItem({ item }: { item: Skill }) {
         {item.evidence && <span className="text-sm">{item.evidence}</span>}
         <SourceLabel type={item.sourceType} />
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" size="sm" onClick={form.show}>
           Edit
         </Button>
@@ -84,9 +84,9 @@ function SkillItem({ item }: { item: Skill }) {
 export function SkillsSection({ items }: { items: Skill[] }) {
   const add = useOpenForm("skill:new");
   return (
-    <section aria-labelledby="skills-heading" className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h2 id="skills-heading" className="text-lg font-medium">
+    <section aria-labelledby="skills-heading" className="workspace-section flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="skills-heading" className="font-heading text-lg font-semibold">
           Skills
         </h2>
         <Button type="button" variant="outline" size="sm" onClick={add.show}>
@@ -94,6 +94,11 @@ export function SkillsSection({ items }: { items: Skill[] }) {
         </Button>
       </div>
       {add.isOpen && <SkillForm onDone={add.close} />}
+      {items.length === 0 && (
+        <p className="rounded-lg bg-muted/60 p-4 text-sm text-muted-foreground">
+          Add a skill and the experience that backs it up.
+        </p>
+      )}
       <ul className="flex flex-col gap-2">
         {items.map((item) => (
           <SkillItem key={item.id} item={item} />

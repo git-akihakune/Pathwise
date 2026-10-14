@@ -4,11 +4,12 @@ import type { Milestone } from "@pathwise/core/services/plan";
 import { useActionState, useState } from "react";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { EntityForm, Field, useOpenForm } from "@/components/entity-form";
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { FormState } from "@/lib/entity-action";
+import { recoverFormAction } from "@/lib/form-recovery";
 import { addMilestoneAction, removeMilestoneAction, updateMilestoneAction } from "./actions";
 import { formatDay } from "./format";
 
@@ -39,16 +40,29 @@ function MilestoneForm({
         <Input name="targetDate" type="date" defaultValue={item?.targetDate ?? ""} />
       </Field>
       <Field label="Description">
-        <Textarea name="description" defaultValue={item?.description ?? ""} />
+        <Textarea
+          className="resize-none"
+          name="description"
+          defaultValue={item?.description ?? ""}
+        />
       </Field>
     </EntityForm>
   );
 }
 
 function StatusSelect({ item }: { item: Milestone }) {
-  const [state, submit] = useActionState<FormState, FormData>(updateMilestoneAction, undefined);
+  const [state, submit] = useActionState<FormState, FormData>(
+    recoverFormAction(updateMilestoneAction),
+    undefined,
+  );
   return (
-    <form action={submit} className="flex flex-col gap-1">
+    <Form
+      noValidate
+      trackChanges={false}
+      result={state}
+      action={submit}
+      className="flex flex-col gap-1"
+    >
       <input type="hidden" name="id" value={item.id} />
       <input type="hidden" name="version" value={item.version} />
       <select
@@ -63,8 +77,7 @@ function StatusSelect({ item }: { item: Milestone }) {
         <option value="done">Done</option>
         <option value="dropped">Dropped</option>
       </select>
-      {state?.error && <Alert variant="destructive">{state.error}</Alert>}
-    </form>
+    </Form>
   );
 }
 
@@ -78,7 +91,7 @@ function MilestoneItem({ planId, item }: { planId: string; item: Milestone }) {
     );
   }
   return (
-    <li className="flex items-start justify-between gap-4 rounded-md border p-3">
+    <li className="entity-row">
       <div className="flex flex-col gap-1">
         <span className="font-medium">{item.title}</span>
         {item.targetDate && (
@@ -99,11 +112,11 @@ function MilestoneItem({ planId, item }: { planId: string; item: Milestone }) {
 
 export function MilestonesSection({ planId, items }: { planId: string; items: Milestone[] }) {
   return (
-    <section aria-labelledby="milestones-heading" className="flex flex-col gap-3">
-      <h2 id="milestones-heading" className="text-lg font-medium">
+    <section aria-labelledby="milestones-heading" className="workspace-section flex flex-col gap-4">
+      <h2 id="milestones-heading" className="font-heading text-lg font-semibold">
         Milestones
       </h2>
-      <ol className="flex flex-col gap-2">
+      <ol className="milestone-list flex flex-col gap-4">
         {items.map((item) => (
           <MilestoneItem key={item.id} planId={planId} item={item} />
         ))}

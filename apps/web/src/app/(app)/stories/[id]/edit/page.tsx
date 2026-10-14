@@ -1,7 +1,10 @@
+export const metadata = { title: "Edit story" };
+
 import { NotFoundError } from "@pathwise/core/errors";
 import { getStory } from "@pathwise/core/services/stories";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { PageHeader } from "@/components/page-header";
 import { getServer } from "@/lib/server";
 import { requireSession } from "@/lib/session";
 import { StoryForm } from "../../story-form";
@@ -16,7 +19,10 @@ export default async function EditStoryPage({ params }: { params: Promise<{ id: 
   });
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">Edit story</h1>
+      <PageHeader
+        title="Edit story"
+        description="Keep your achievements accurate and ready to reuse."
+      />
       <StoryForm story={story} />
     </div>
   );

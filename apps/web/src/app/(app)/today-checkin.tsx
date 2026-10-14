@@ -1,4 +1,5 @@
 import type { TodayView } from "@pathwise/core/services/today";
+import { CalendarDays } from "lucide-react";
 import Link from "next/link";
 
 export function TodayCheckin({
@@ -20,8 +21,11 @@ export function TodayCheckin({
   const weekday = parts.find((p) => p.type === "weekday")?.value;
   const time = `${parts.find((p) => p.type === "hour")?.value}:${parts.find((p) => p.type === "minute")?.value}`;
   return (
-    <section aria-labelledby="today-checkin" className="flex flex-col gap-2">
-      <h2 id="today-checkin" className="text-lg font-medium">
+    <section aria-labelledby="today-checkin" className="workspace-section flex flex-col gap-4">
+      <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-primary">
+        <CalendarDays className="size-5" aria-hidden="true" />
+      </span>
+      <h2 id="today-checkin" className="font-heading text-lg font-semibold">
         Weekly check-in
       </h2>
       {checkin.state === "open" && (
@@ -31,7 +35,10 @@ export function TodayCheckin({
               ? "Your check-in is still open. It only takes a few minutes."
               : "Your weekly check-in is ready."}
           </p>
-          <Link href="/checkin" className="underline">
+          <Link
+            href="/checkin"
+            className="w-fit text-sm font-semibold text-primary underline underline-offset-4"
+          >
             Start check-in
           </Link>
         </>
@@ -47,7 +54,10 @@ export function TodayCheckin({
           <p>
             Next check-in: {weekday} at {time}.
           </p>
-          <Link href="/settings" className="underline">
+          <Link
+            href="/settings"
+            className="w-fit text-sm font-semibold text-primary underline underline-offset-4"
+          >
             Change schedule
           </Link>
         </>
@@ -55,7 +65,10 @@ export function TodayCheckin({
       {checkin.state === "off" && (
         <>
           <p>Weekly check-ins are off.</p>
-          <Link href="/settings" className="underline">
+          <Link
+            href="/settings"
+            className="w-fit text-sm font-semibold text-primary underline underline-offset-4"
+          >
             Turn on
           </Link>
         </>

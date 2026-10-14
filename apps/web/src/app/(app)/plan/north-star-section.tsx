@@ -9,7 +9,7 @@ import { createPlanAction, updateNorthStarAction } from "./actions";
 
 export function NewPlanForm({ paths }: { paths: CareerPath[] }) {
   return (
-    <section className="flex flex-col gap-3">
+    <section className="workspace-section flex flex-col gap-4">
       <p className="text-muted-foreground">You don't have a plan yet.</p>
       <EntityForm action={createPlanAction} submitLabel="Create plan" cancel={false}>
         <Field label="North star">
@@ -37,8 +37,8 @@ export function NewPlanForm({ paths }: { paths: CareerPath[] }) {
 export function NorthStarSection({ plan }: { plan: ActivePlan }) {
   const form = useOpenForm("north-star");
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-medium">North star</h2>
+    <section className="workspace-section flex flex-col gap-4">
+      <h2 className="font-heading text-lg font-semibold">North star</h2>
       {form.isOpen ? (
         <EntityForm action={updateNorthStarAction} entity={plan} onDone={form.close}>
           <Field label="North star">
@@ -46,8 +46,10 @@ export function NorthStarSection({ plan }: { plan: ActivePlan }) {
           </Field>
         </EntityForm>
       ) : (
-        <div className="flex items-start justify-between gap-4">
-          <p>{plan.northStar}</p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <p className="max-w-2xl font-heading text-xl font-semibold leading-relaxed">
+            {plan.northStar}
+          </p>
           <Button type="button" variant="outline" size="sm" onClick={form.show}>
             Edit north star
           </Button>

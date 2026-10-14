@@ -63,7 +63,7 @@ function ActionForm({
         </select>
       </Field>
       <Field label="Notes">
-        <Textarea name="notes" defaultValue={item?.notes ?? ""} />
+        <Textarea className="resize-none" name="notes" defaultValue={item?.notes ?? ""} />
       </Field>
     </EntityForm>
   );
@@ -189,8 +189,8 @@ export function ActionsSection({
     />
   );
   return (
-    <section aria-labelledby="actions-heading" className="flex flex-col gap-3">
-      <h2 id="actions-heading" className="text-lg font-medium">
+    <section aria-labelledby="actions-heading" className="workspace-section flex flex-col gap-4">
+      <h2 id="actions-heading" className="font-heading text-lg font-semibold">
         Weekly actions
       </h2>
       {error && <Alert variant="destructive">{error}</Alert>}

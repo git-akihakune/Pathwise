@@ -30,10 +30,18 @@ function ExperienceForm({ item, onDone }: { item?: Experience; onDone: () => voi
         YYYY or YYYY-MM. Leave End empty if this is your current role.
       </p>
       <Field label="Description">
-        <Textarea name="description" defaultValue={item?.description ?? ""} />
+        <Textarea
+          className="resize-none"
+          name="description"
+          defaultValue={item?.description ?? ""}
+        />
       </Field>
       <Field label="Highlights (one per line)">
-        <Textarea name="highlights" defaultValue={item?.highlights.join("\n") ?? ""} />
+        <Textarea
+          className="resize-none"
+          name="highlights"
+          defaultValue={item?.highlights.join("\n") ?? ""}
+        />
       </Field>
     </EntityForm>
   );
@@ -51,7 +59,7 @@ function ExperienceItem({ item }: { item: Experience }) {
   const dates =
     item.startDate || item.endDate ? `${item.startDate ?? "?"} – ${item.endDate ?? "present"}` : "";
   return (
-    <li className="flex items-start justify-between gap-4 rounded-md border p-3">
+    <li className="entity-row">
       <div className="flex flex-col gap-1">
         <span>{[item.title, item.organization, dates].filter(Boolean).join(" · ")}</span>
         {item.description && <span className="text-sm">{item.description}</span>}
@@ -60,7 +68,7 @@ function ExperienceItem({ item }: { item: Experience }) {
         )}
         <SourceLabel type={item.sourceType} />
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" size="sm" onClick={form.show}>
           Edit
         </Button>
@@ -73,9 +81,9 @@ function ExperienceItem({ item }: { item: Experience }) {
 export function ExperienceSection({ items }: { items: Experience[] }) {
   const add = useOpenForm("experience:new");
   return (
-    <section aria-labelledby="experience-heading" className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h2 id="experience-heading" className="text-lg font-medium">
+    <section aria-labelledby="experience-heading" className="workspace-section flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="experience-heading" className="font-heading text-lg font-semibold">
           Experience
         </h2>
         <Button type="button" variant="outline" size="sm" onClick={add.show}>
@@ -83,6 +91,12 @@ export function ExperienceSection({ items }: { items: Experience[] }) {
         </Button>
       </div>
       {add.isOpen && <ExperienceForm onDone={add.close} />}
+      {items.length === 0 && (
+        <p className="rounded-lg bg-muted/60 p-4 text-sm text-muted-foreground">
+          Your experience starts here. Add a role, project, or other work you want your coach to
+          know about.
+        </p>
+      )}
       <ul className="flex flex-col gap-2">
         {items.map((item) => (
           <ExperienceItem key={item.id} item={item} />

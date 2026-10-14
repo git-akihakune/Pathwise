@@ -1,8 +1,11 @@
+export const metadata = { title: "Plan" };
+
 import { listPaths } from "@pathwise/core/services/paths";
 import { getActivePlan, mondayOf } from "@pathwise/core/services/plan";
 import { effectiveTimezone, getUserSettings } from "@pathwise/core/services/settings";
 import { connection } from "next/server";
 import { OpenFormProvider } from "@/components/entity-form";
+import { PageHeader } from "@/components/page-header";
 import { getServer } from "@/lib/server";
 import { requireSession } from "@/lib/session";
 import { ActionsSection } from "./actions-section";
@@ -22,7 +25,10 @@ export default async function PlanPage() {
   const thisWeek = mondayOf(new Date(), effectiveTimezone(settings));
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-2xl font-semibold">Plan</h1>
+      <PageHeader
+        title="Plan"
+        description="Give your direction a practical route, one milestone and one week at a time."
+      />
       <OpenFormProvider>
         {plan ? (
           <>

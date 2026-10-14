@@ -35,7 +35,7 @@ function MemoryForm({ item, onDone }: { item?: MemoryItem; onDone: () => void })
         </select>
       </Field>
       <Field label="What should I remember?">
-        <Textarea name="content" defaultValue={item?.content} required />
+        <Textarea className="resize-none" name="content" defaultValue={item?.content} required />
       </Field>
     </EntityForm>
   );
@@ -51,7 +51,7 @@ function MemoryRow({ item }: { item: MemoryItem }) {
     );
   }
   return (
-    <li className="flex items-start justify-between gap-4 rounded-md border p-3">
+    <li className="entity-row">
       <div className="flex flex-col gap-1">
         <span className="flex flex-wrap items-center gap-2">
           {item.content}
@@ -59,7 +59,7 @@ function MemoryRow({ item }: { item: MemoryItem }) {
         </span>
         <SourceLabel type={item.sourceType} />
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" size="sm" onClick={form.show}>
           Edit
         </Button>
@@ -72,9 +72,9 @@ function MemoryRow({ item }: { item: MemoryItem }) {
 export function MemorySection({ items }: { items: MemoryItem[] }) {
   const add = useOpenForm("memory:new");
   return (
-    <section aria-labelledby="memory-heading" className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h2 id="memory-heading" className="text-lg font-medium">
+    <section aria-labelledby="memory-heading" className="workspace-section flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="memory-heading" className="font-heading text-lg font-semibold">
           What matters to you
         </h2>
         <Button type="button" variant="outline" size="sm" onClick={add.show}>
@@ -82,29 +82,31 @@ export function MemorySection({ items }: { items: MemoryItem[] }) {
         </Button>
       </div>
       {add.isOpen && <MemoryForm onDone={add.close} />}
-      {GROUPS.map(([category, label]) => {
-        const group = items.filter((i) => i.category === category);
-        return (
-          <section
-            key={category}
-            aria-labelledby={`memory-${category}`}
-            className="flex flex-col gap-2"
-          >
-            <h3 id={`memory-${category}`} className="text-sm font-medium">
-              {label}
-            </h3>
-            {group.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing yet.</p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {group.map((item) => (
-                  <MemoryRow key={item.id} item={item} />
-                ))}
-              </ul>
-            )}
-          </section>
-        );
-      })}
+      <div className="grid gap-4 md:grid-cols-2">
+        {GROUPS.map(([category, label]) => {
+          const group = items.filter((i) => i.category === category);
+          return (
+            <section
+              key={category}
+              aria-labelledby={`memory-${category}`}
+              className="flex flex-col gap-2 rounded-xl bg-muted/40 p-4"
+            >
+              <h3 id={`memory-${category}`} className="text-sm font-medium">
+                {label}
+              </h3>
+              {group.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nothing yet.</p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {group.map((item) => (
+                    <MemoryRow key={item.id} item={item} />
+                  ))}
+                </ul>
+              )}
+            </section>
+          );
+        })}
+      </div>
     </section>
   );
 }

@@ -44,14 +44,14 @@ function EducationItem({ item }: { item: Education }) {
   const dates =
     item.startDate || item.endDate ? `${item.startDate ?? "?"} – ${item.endDate ?? "present"}` : "";
   return (
-    <li className="flex items-start justify-between gap-4 rounded-md border p-3">
+    <li className="entity-row">
       <div className="flex flex-col gap-1">
         <span>
           {[item.institution, item.qualification, item.field, dates].filter(Boolean).join(" · ")}
         </span>
         <SourceLabel type={item.sourceType} />
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" size="sm" onClick={form.show}>
           Edit
         </Button>
@@ -64,9 +64,9 @@ function EducationItem({ item }: { item: Education }) {
 export function EducationSection({ items }: { items: Education[] }) {
   const add = useOpenForm("education:new");
   return (
-    <section aria-labelledby="education-heading" className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h2 id="education-heading" className="text-lg font-medium">
+    <section aria-labelledby="education-heading" className="workspace-section flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="education-heading" className="font-heading text-lg font-semibold">
           Education
         </h2>
         <Button type="button" variant="outline" size="sm" onClick={add.show}>
@@ -74,6 +74,11 @@ export function EducationSection({ items }: { items: Education[] }) {
         </Button>
       </div>
       {add.isOpen && <EducationForm onDone={add.close} />}
+      {items.length === 0 && (
+        <p className="rounded-lg bg-muted/60 p-4 text-sm text-muted-foreground">
+          Add your education, training, or qualifications.
+        </p>
+      )}
       <ul className="flex flex-col gap-2">
         {items.map((item) => (
           <EducationItem key={item.id} item={item} />

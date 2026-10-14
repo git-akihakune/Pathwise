@@ -32,7 +32,7 @@ export function StoryForm({ story }: { story?: Story }) {
       </Field>
       {STAR.map(([name, label]) => (
         <Field key={name} label={label}>
-          <Textarea name={name} defaultValue={story?.[name]} />
+          <Textarea className="resize-none" name={name} defaultValue={story?.[name]} />
         </Field>
       ))}
       <Field label="Metrics">
