@@ -157,7 +157,7 @@ export function AppNav({ isAdmin, name }: { isAdmin: boolean; name: string }) {
             >
               <Menu className="size-5" aria-hidden="true" />
             </DialogTrigger>
-            <DialogContent className="navigation-drawer inset-y-0 left-0 top-0 h-dvh max-h-dvh w-[min(320px,90vw)] max-w-none translate-x-0 translate-y-0 gap-0 rounded-none bg-sidebar p-0 text-sidebar-foreground sm:max-w-none data-open:animate-none data-closed:animate-none">
+            <DialogContent className="navigation-drawer inset-y-0 left-0 top-0 h-dvh max-h-dvh w-[min(320px,90vw)] max-w-none translate-x-0 translate-y-0 gap-0 rounded-none bg-sidebar p-0 text-sidebar-foreground sm:max-w-none data-open:animate-navigation-enter data-closed:animate-navigation-exit motion-reduce:animate-none">
               <DialogTitle className="sr-only">Navigation</DialogTitle>
               <DialogDescription className="sr-only">
                 Navigate your Pathwise workspace.

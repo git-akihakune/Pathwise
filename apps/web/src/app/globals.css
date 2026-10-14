@@ -5,6 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --animate-navigation-enter: drawer-enter 260ms var(--motion-ease);
+  --animate-navigation-exit: drawer-exit 180ms ease-in;
   --font-heading: "Manrope Variable", "Manrope", system-ui, sans-serif;
   --font-sans: "Source Sans 3 Variable", "Source Sans 3", system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -49,6 +51,9 @@
 
 :root {
   color-scheme: light;
+  --motion-fast: 160ms;
+  --motion-enter: 360ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --background: #f3f6f8;
   --foreground: #172e43;
   --card: #ffffff;
@@ -382,5 +387,107 @@
 @keyframes busy-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@layer components {
+  .workspace-page,
+  .auth-content > * {
+    animation: workspace-enter var(--motion-enter) var(--motion-ease);
+  }
+  .journey-node {
+    animation: journey-enter 480ms var(--motion-ease) backwards;
+  }
+  .career-journey > li:nth-child(2) .journey-node {
+    animation-delay: 80ms;
+  }
+  .career-journey > li:nth-child(3) .journey-node {
+    animation-delay: 160ms;
+  }
+  [data-slot="checkbox-indicator"] {
+    animation: check-enter 180ms var(--motion-ease);
+  }
+  .chat-message {
+    animation: workspace-enter 240ms var(--motion-ease);
+  }
+  nav a > svg {
+    transition: transform var(--motion-fast) var(--motion-ease);
+  }
+  .theme-select svg {
+    animation: check-enter 220ms var(--motion-ease);
+  }
+  [data-slot="button"] {
+    transition-duration: var(--motion-fast);
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  nav a:hover > svg:first-child {
+    transform: translateX(2px);
+  }
+  [data-slot="button"][data-variant="default"]:not(:disabled):not([aria-busy="true"]):hover {
+    transform: translateY(-1px);
+  }
+  [data-slot="button"][data-variant="default"]:not(:disabled):not([aria-busy="true"]):active {
+    transform: translateY(0);
+  }
+}
+
+@keyframes workspace-enter {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes journey-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes drawer-enter {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes drawer-exit {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+@keyframes check-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.75);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-page,
+  .auth-content > *,
+  .journey-node,
+  .navigation-drawer[data-state],
+  [data-slot="checkbox-indicator"],
+  .chat-message,
+  .theme-select svg {
+    animation: none;
   }
 }

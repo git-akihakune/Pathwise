@@ -16,6 +16,7 @@ test("workspace theme survives navigation and stays accessible on mobile", async
     await page.goto(route);
     await expect(page.locator("main h1")).toBeVisible();
     await expect(theme).toContainText("Dark");
+    await expect(page.locator(".workspace-page")).toHaveCSS("animation-name", "workspace-enter");
   }
   await page.setViewportSize({ width: 360, height: 780 });
   await page.goto("/plan");
@@ -27,10 +28,13 @@ test("workspace theme survives navigation and stays accessible on mobile", async
   });
   await page.getByRole("button", { name: "Open navigation" }).click();
   const drawer = page.getByRole("dialog", { name: "Navigation", exact: true });
+  await expect(drawer).toHaveCSS("animation-name", "drawer-enter");
   await page.keyboard.press("Escape");
   await expect(drawer).toBeHidden();
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(page.locator(".workspace-page")).toHaveCSS("animation-name", "none");
   await page.getByRole("button", { name: "Open navigation" }).click();
+  await expect(drawer).toHaveCSS("animation-name", "none");
   await page.keyboard.press("Escape");
   await theme.click();
   await page.getByRole("option", { name: "Light", exact: true }).click();
@@ -61,6 +65,7 @@ test("mobile navigation supports keyboard dismissal and route changes", async ({
   await menu.click();
   const dialog = page.getByRole("dialog", { name: "Navigation" });
   await expect(dialog).toBeVisible();
+  await expect.poll(async () => Math.round((await dialog.boundingBox())?.x ?? -1)).toBe(0);
   const close = dialog.getByRole("button", { name: "Close", exact: true });
   const closeBounds = await close.boundingBox();
   expect(closeBounds?.y).toBeLessThan(64);
@@ -170,6 +175,7 @@ test("discarding edits through mobile navigation closes both dialogs", async ({ 
   await page.getByLabel("Job title").fill("Mobile draft");
   await page.getByRole("button", { name: "Open navigation" }).click();
   const drawer = page.getByRole("dialog", { name: "Navigation", exact: true });
+  await expect.poll(async () => Math.round((await drawer.boundingBox())?.x ?? -1)).toBe(0);
   const bounds = await drawer.boundingBox();
   expect(bounds?.x).toBe(0);
   expect(bounds?.width).toBeLessThanOrEqual(320);

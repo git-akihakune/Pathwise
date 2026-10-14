@@ -128,7 +128,7 @@ Lucide, generally 18–20px, 1.7–2px stroke. Icons support text; they never re
 
 ### Motion
 
-Brief 150ms color and opacity transitions; no ambient animation. Reduced motion removes nonessential transitions and animations. Streaming status is communicated in text as well as the indicator.
+Motion marks arrivals and actions: 360ms page entrances with an 8px rise, journey nodes staggered by 80ms, a 260ms opening/180ms closing navigation drawer, 180ms checkbox confirmation, and 160ms control feedback. Runtime globals.css owns motion timing and easing; the app template remounts page entrances on navigation. Hover transforms run only for hover-capable devices. Static panels retain their position and never imply clickability. No ambient animation. Reduced motion removes decorative animation and hover movement, and minimizes all remaining utility transitions/animations. Streaming status is communicated in text as well as the indicator.
 
 ### Content and data visualization
 
