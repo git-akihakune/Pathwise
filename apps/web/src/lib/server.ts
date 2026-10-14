@@ -5,12 +5,15 @@ import type { AppConfig } from "@pathwise/core/config";
 import { loadConfig } from "@pathwise/core/config";
 import type { Db } from "@pathwise/core/db";
 import { createDb } from "@pathwise/core/db";
+import type { Mailer } from "@pathwise/core/mail";
+import { mailerFor } from "@pathwise/core/mail";
 import { nextCookies } from "better-auth/next-js";
 
 export interface Server {
   config: AppConfig;
   db: Db;
   auth: Auth;
+  mailer: Mailer;
 }
 
 const globalForServer = globalThis as typeof globalThis & { __pathwiseServer?: Server };
@@ -20,8 +23,9 @@ export function getServer(): Server {
   if (!globalForServer.__pathwiseServer) {
     const config = loadConfig();
     const { db } = createDb(config.databaseUrl);
-    const auth = createAuth({ db, config, plugins: [nextCookies()] });
-    globalForServer.__pathwiseServer = { config, db, auth };
+    const mailer = mailerFor(config);
+    const auth = createAuth({ db, config, plugins: [nextCookies()], mailer });
+    globalForServer.__pathwiseServer = { config, db, auth, mailer };
   }
   return globalForServer.__pathwiseServer;
 }

@@ -9,3 +9,24 @@ export class ForbiddenError extends Error {
 export class NotFoundError extends Error {
   override name = "NotFoundError";
 }
+
+/** User-correctable input error. The message is user-facing copy. */
+export class ValidationError extends Error {
+  override name = "ValidationError";
+}
+
+export type LlmUnavailableReason = "none" | "auth_failed" | "unusable";
+
+export class LlmUnavailableError extends Error {
+  override name = "LlmUnavailableError";
+  readonly reason: LlmUnavailableReason;
+  constructor(reason: LlmUnavailableReason) {
+    super(`No usable LLM provider (${reason}).`);
+    this.reason = reason;
+  }
+}
+
+/** The row changed since the caller loaded it (optimistic-version mismatch). */
+export class ConflictError extends Error {
+  override name = "ConflictError";
+}

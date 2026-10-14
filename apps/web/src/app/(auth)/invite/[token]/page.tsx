@@ -1,3 +1,5 @@
+export const metadata = { title: "Invitation" };
+
 import { userExists } from "@pathwise/core/auth";
 import { getInstanceSettings } from "@pathwise/core/instance";
 import { describeInvite, type InviteStatus } from "@pathwise/core/invites";
@@ -33,7 +35,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 p-4">
+    <div className="flex flex-col gap-4">
       <OriginBanner appUrl={config.appUrl} />
       <Card>
         <CardHeader>
@@ -62,6 +64,6 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
           )}
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }

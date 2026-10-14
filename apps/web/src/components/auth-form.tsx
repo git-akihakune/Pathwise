@@ -2,10 +2,12 @@
 
 import { useActionState } from "react";
 import type { FormState } from "@/app/(auth)/actions";
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SecretInput } from "@/components/ui/secret-input";
+import { recoverFormAction } from "@/lib/form-recovery";
 
 type Props = {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
@@ -14,12 +16,20 @@ type Props = {
   inviteToken?: string;
   /** Pre-filled, read-only email (invitation sign-up). */
   fixedEmail?: string;
+  /** Post-sign-in return path; the server re-validates it with safeNext. */
+  next?: string;
 };
 
-export function AuthForm({ action, submitLabel, withName, inviteToken, fixedEmail }: Props) {
-  const [state, formAction, pending] = useActionState(action, undefined);
+export function AuthForm({ action, submitLabel, withName, inviteToken, fixedEmail, next }: Props) {
+  const [state, formAction, pending] = useActionState(recoverFormAction(action), undefined);
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <Form
+      noValidate
+      result={state}
+      error={state?.error}
+      action={formAction}
+      className="flex flex-col gap-4"
+    >
       {withName && (
         <div className="flex flex-col gap-2">
           <Label htmlFor="name">Name</Label>
@@ -46,19 +56,18 @@ export function AuthForm({ action, submitLabel, withName, inviteToken, fixedEmai
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="password">Password</Label>
-        <Input
+        <SecretInput
           id="password"
           name="password"
-          type="password"
           autoComplete={withName ? "new-password" : "current-password"}
           required
         />
       </div>
+      {next && <input type="hidden" name="next" value={next} />}
       {inviteToken && <input type="hidden" name="inviteToken" value={inviteToken} />}
-      {state?.error && <Alert variant="destructive">{state.error}</Alert>}
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending} aria-busy={pending}>
         {submitLabel}
       </Button>
-    </form>
+    </Form>
   );
 }

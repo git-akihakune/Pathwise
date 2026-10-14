@@ -12,10 +12,10 @@ test("first sign-up creates the admin and lands on Today", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Create the admin account" })).toBeVisible();
   await page.getByLabel("Name").fill(admin.name);
   await page.getByLabel("Email").fill(admin.email);
-  await page.getByLabel("Password").fill(admin.password);
+  await page.getByLabel("Password", { exact: true }).fill(admin.password);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByRole("heading", { name: `Welcome, ${admin.name}` })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Admin" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Admin", exact: true })).toBeVisible();
 });
 test("sign-up is invitation-only afterwards", async ({ page }) => {
   await page.goto("/sign-up");
@@ -24,10 +24,10 @@ test("sign-up is invitation-only afterwards", async ({ page }) => {
 test("sign out and back in", async ({ page }) => {
   await page.goto("/sign-in");
   await page.getByLabel("Email").fill(admin.email);
-  await page.getByLabel("Password").fill("wrong-password-123");
+  await page.getByLabel("Password", { exact: true }).fill("wrong-password-123");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByText("Email or password is incorrect.")).toBeVisible();
-  await page.getByLabel("Password").fill(admin.password);
+  await page.getByLabel("Password", { exact: true }).fill(admin.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: `Welcome, ${admin.name}` })).toBeVisible();
   await page.getByRole("button", { name: "Sign out" }).click();

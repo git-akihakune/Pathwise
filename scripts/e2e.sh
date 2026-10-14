@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-export COMPOSE_PROJECT_NAME=pathwise-e2e PATHWISE_PORT=3100 APP_URL=http://localhost:3100
+export COMPOSE_PROJECT_NAME=pathwise-e2e PATHWISE_PORT=3100 APP_URL=http://localhost:3100 LLM_MODE=mock
 dc() { docker compose --env-file /dev/null "$@"; }
 trap 'dc down -v' EXIT
 

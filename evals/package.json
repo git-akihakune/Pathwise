@@ -1,0 +1,18 @@
+{
+  "name": "@pathwise/evals",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/run.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pathwise/core": "workspace:*",
+    "ai": "~7.0.137",
+    "zod": "^4.6.7",
+    "@testcontainers/postgresql": "^12.2.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15"
+  }
+}

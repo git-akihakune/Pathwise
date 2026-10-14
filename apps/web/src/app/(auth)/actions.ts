@@ -1,19 +1,23 @@
 "use server";
 
-import { createRateLimiter, signUp } from "@pathwise/core/auth";
+import { createRateLimiter, MIN_PASSWORD_LENGTH, signUp } from "@pathwise/core/auth";
 import { normalizeEmail } from "@pathwise/core/invites";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { safeNext } from "@/lib/safe-next";
 import { getServer } from "@/lib/server";
 import { SIGN_UP_ERRORS } from "./errors";
 
 // `values` repopulates the fields, since React resets uncontrolled forms after every action.
-export type FormState = { error?: string; values?: { name?: string; email?: string } } | undefined;
+export type FormState =
+  | { error?: string; sent?: boolean; values?: { name?: string; email?: string } }
+  | undefined;
 
 const RATE_LIMITED = "Too many attempts. Try again in a minute.";
 // Better Auth only rate-limits HTTP requests, not the direct auth.api calls made here.
 const signInLimiter = createRateLimiter({ limit: 10, windowMs: 60_000 });
 const signUpLimiter = createRateLimiter({ limit: 10, windowMs: 60_000 });
+const resetLimiter = createRateLimiter({ limit: 5, windowMs: 60_000 });
 
 // The IP bucket is best-effort only: without a trusted proxy x-forwarded-for is client-controlled
 // and spoofable. The per-email bucket is the real per-account bound on guessing.
@@ -70,7 +74,42 @@ export async function signInAction(_prev: FormState, formData: FormData): Promis
       values: { email: field(formData, "email") },
     };
   }
-  redirect("/");
+  redirect(safeNext(field(formData, "next")));
+}
+
+export async function forgotPasswordAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const h = await headers();
+  const email = field(formData, "email").trim();
+  if (limited(resetLimiter, h, email)) return { error: RATE_LIMITED };
+  const { auth, mailer } = getServer();
+  // Same answer whether or not the account exists (and whether or not the send worked).
+  if (mailer.enabled) {
+    try {
+      await auth.api.requestPasswordReset({ body: { email, redirectTo: "/reset-password" } });
+    } catch {}
+  }
+  return { sent: true };
+}
+
+export async function resetPasswordAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const password = field(formData, "password");
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return { error: `Use at least ${MIN_PASSWORD_LENGTH} characters.` };
+  }
+  try {
+    await getServer().auth.api.resetPassword({
+      body: { token: field(formData, "token"), newPassword: password },
+    });
+  } catch {
+    return { error: "This reset link has expired or was already used." };
+  }
+  redirect("/sign-in?reset=1");
 }
 
 export async function signOutAction(): Promise<void> {

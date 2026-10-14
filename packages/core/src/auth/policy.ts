@@ -6,13 +6,13 @@ export type SignupDecision =
   | { allowed: true; role: "admin" | "user" }
   | { allowed: false; reason: SignupRejection };
 
-/** Pure sign-up policy. The first user always becomes admin, regardless of mode. */
+/** Pure sign-up policy. The first sign-up with no existing admin becomes admin, regardless of mode. */
 export function evaluateSignup(input: {
-  userCount: number;
+  adminCount: number;
   mode: SignupMode;
   invite: InviteCheck;
 }): SignupDecision {
-  if (input.userCount === 0) return { allowed: true, role: "admin" };
+  if (input.adminCount === 0) return { allowed: true, role: "admin" };
   switch (input.mode) {
     case "open":
       return { allowed: true, role: "user" };

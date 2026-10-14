@@ -15,9 +15,21 @@ if (process.env.NODE_ENV !== "production" && existsSync(devEnv)) {
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Keep fresh container builds within modest self-hosted memory budgets.
+  experimental: { cpus: 2 },
   outputFileTracingRoot: repoRoot,
   transpilePackages: ["@pathwise/core"],
-  serverExternalPackages: ["pg", "pg-boss"],
+  serverExternalPackages: [
+    "pg",
+    "pg-boss",
+    "unpdf",
+    "mammoth",
+    "nodemailer",
+    "@react-email/components",
+    "@react-email/render",
+    "@opentelemetry/sdk-trace-node",
+    "@opentelemetry/exporter-trace-otlp-http",
+  ],
   agentRules: false,
 };
 

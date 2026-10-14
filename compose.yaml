@@ -10,6 +10,8 @@ x-app-env: &app-env
   SMTP_FROM: ${SMTP_FROM:-}
   CUSTOM_ENDPOINTS: ${CUSTOM_ENDPOINTS:-admin_only}
   ALLOW_PRIVATE_ENDPOINTS: ${ALLOW_PRIVATE_ENDPOINTS:-false}
+  LLM_MODE: ${LLM_MODE:-live}
+  TAXONOMY_DIR: ${TAXONOMY_DIR:-/app/data/taxonomy}
   SEED_DEMO: ${SEED_DEMO:-false}
   LOG_CONTENT: ${LOG_CONTENT:-false}
   LOG_LEVEL: ${LOG_LEVEL:-}

@@ -15,9 +15,11 @@ COPY . .
 RUN pnpm --filter @pathwise/worker build && pnpm --filter @pathwise/web build
 
 FROM node:24-slim AS runtime
+COPY LICENSE NOTICE /app/
 COPY --from=build /repo/apps/web/.next/standalone /app/web
 COPY --from=build /repo/apps/web/.next/static /app/web/apps/web/.next/static
 COPY --from=build /repo/apps/worker/dist /app/worker
+COPY --from=build /repo/data/taxonomy /app/data/taxonomy
 COPY docker/entrypoint.sh /app/entrypoint.sh
 COPY docker/pathwise /usr/local/bin/pathwise
 RUN mkdir -p /var/lib/pathwise/secrets /var/lib/pathwise/files \

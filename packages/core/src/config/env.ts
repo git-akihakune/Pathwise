@@ -26,6 +26,8 @@ export interface BaseConfig {
   seedDemo: boolean;
   logContent: boolean;
   otelEndpoint: string | null;
+  llmMode: "live" | "mock";
+  taxonomyDir: string;
 }
 
 export interface Secrets {
@@ -60,6 +62,8 @@ const envSchema = z.object({
   SEED_DEMO: bool,
   LOG_CONTENT: bool,
   OTEL_EXPORTER_OTLP_ENDPOINT: optional(z.string()),
+  LLM_MODE: optional(z.enum(["live", "mock"])),
+  TAXONOMY_DIR: optional(z.string()),
 });
 
 function fail(error: z.ZodError): never {
@@ -95,6 +99,8 @@ export function loadBaseConfig(env: NodeJS.ProcessEnv = process.env): BaseConfig
     seedDemo: e.SEED_DEMO ?? false,
     logContent: e.LOG_CONTENT ?? false,
     otelEndpoint: e.OTEL_EXPORTER_OTLP_ENDPOINT ?? null,
+    llmMode: e.LLM_MODE ?? "live",
+    taxonomyDir: e.TAXONOMY_DIR ?? "/app/data/taxonomy",
   };
 }
 

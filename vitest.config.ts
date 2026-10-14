@@ -6,14 +6,16 @@ export default defineConfig({
       {
         test: {
           name: "unit",
-          include: ["**/src/**/*.test.ts"],
-          exclude: [...configDefaults.exclude, "**/*.int.test.ts"],
+          maxWorkers: 1,
+          include: ["**/src/**/*.test.ts", "scripts/**/*.test.ts"],
+          exclude: [...configDefaults.exclude, "**/*.int.test.ts", "**/.next/**"],
         },
       },
       {
         test: {
           name: "integration",
           include: ["**/*.int.test.ts"],
+          exclude: [...configDefaults.exclude, "**/.next/**"],
           globalSetup: "test/integration/global-setup.ts",
           fileParallelism: false,
           testTimeout: 30000,

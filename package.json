@@ -9,8 +9,9 @@
   "license": "AGPL-3.0-only",
   "scripts": {
     "lint": "biome check .",
+    "taxonomy:fixture": "tsx test/fixtures/taxonomy/generate.ts",
     "format": "biome check --write .",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm -r typecheck && tsc -p scripts/taxonomy && tsc -p scripts",
     "test": "vitest run --project unit",
     "test:int": "vitest run --project integration",
     "build": "pnpm -r build",
@@ -19,14 +20,21 @@
     "dev:worker": "tsx watch --env-file=dev.env apps/worker/src/main.ts worker",
     "dev:web": "pnpm --filter @pathwise/web dev",
     "e2e": "bash scripts/e2e.sh",
-    "dev": "pnpm dev:db && pnpm dev:init && pnpm -w run --parallel \"/^dev:(web|worker)$/\""
+    "dev": "pnpm dev:db && pnpm dev:init && pnpm -w run --parallel \"/^dev:(web|worker)$/\"",
+    "taxonomy:build": "tsx scripts/taxonomy/build.ts",
+    "smoke:local": "tsx scripts/smoke-local.ts",
+    "evals": "pnpm --filter @pathwise/evals start"
   },
   "devDependencies": {
+    "@ai-sdk/provider": "4.0.26",
     "@biomejs/biome": "^2.5.15",
     "@playwright/test": "~1.64.0",
     "@testcontainers/postgresql": "^12.2.0",
     "@types/node": "^24.0.0",
+    "ai": "~7.0.137",
+    "csv-parse": "^7.0.3",
     "drizzle-orm": "^0.45.4",
+    "fflate": "^0.8.3",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "vitest": "^5.0.4"

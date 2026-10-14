@@ -1,4 +1,4 @@
-packages: ["apps/*", "packages/*"]
+packages: ["apps/*", "packages/*", "evals"]
 allowBuilds:
   cpu-features: false
   esbuild: true

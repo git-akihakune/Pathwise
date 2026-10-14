@@ -10,12 +10,16 @@
       "!.pnpm-store",
       "!test-results",
       "!playwright-report",
+      "!playwright/.auth",
+      "!evals/results",
       "!packages/core/drizzle",
       "!packages/core/src/db/schema/auth.ts",
       "!.devcontainer",
       "!.claude-data",
       "!.superpowers",
-      "!docs"
+      "!docs",
+      "!data/taxonomy",
+      "!test/fixtures/taxonomy/manifest.json"
     ]
   },
   "css": { "parser": { "tailwindDirectives": true } },

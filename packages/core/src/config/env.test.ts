@@ -21,7 +21,19 @@ describe("loadBaseConfig", () => {
       seedDemo: false,
       logContent: false,
       otelEndpoint: null,
+      llmMode: "live",
+      taxonomyDir: "/app/data/taxonomy",
     });
+  });
+  it("reads TAXONOMY_DIR", () => {
+    expect(loadBaseConfig({ ...DB, TAXONOMY_DIR: "./data/taxonomy" }).taxonomyDir).toBe(
+      "./data/taxonomy",
+    );
+  });
+  it("reads LLM_MODE", () => {
+    expect(loadBaseConfig({ ...DB, LLM_MODE: "mock" }).llmMode).toBe("mock");
+    expect(loadBaseConfig({ ...DB, LLM_MODE: "" }).llmMode).toBe("live");
+    expect(() => loadBaseConfig({ ...DB, LLM_MODE: "fake" })).toThrow(/LLM_MODE/);
   });
   it("rejects an APP_URL that is not an http(s) URL", () => {
     for (const bad of ["coach.example.com", "ftp://x.io"]) {

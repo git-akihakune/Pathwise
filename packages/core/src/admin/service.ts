@@ -1,7 +1,9 @@
-import { asc, eq } from "drizzle-orm";
-import { type Db, schema } from "../db";
-import { ForbiddenError } from "../errors";
-import type { SignupMode } from "../instance";
+import { asc, eq, sql } from "drizzle-orm";
+import { z } from "zod";
+import { ADMIN_LOCK_KEY } from "../auth";
+import { type Db, type DbOrTx, schema } from "../db";
+import { ForbiddenError, NotFoundError, ValidationError } from "../errors";
+import type { SafetyResource, SignupMode } from "../instance";
 import {
   createInvite,
   type Invite,
@@ -18,12 +20,25 @@ export interface AdminUserRow {
   createdAt: Date;
 }
 
-export async function assertAdmin(db: Db, actorId: string): Promise<void> {
+export async function assertAdmin(db: DbOrTx, actorId: string): Promise<void> {
   const [row] = await db
     .select({ role: schema.user.role })
     .from(schema.user)
     .where(eq(schema.user.id, actorId));
   if (row?.role !== "admin") throw new ForbiddenError("admin access required");
+}
+
+export async function promoteToAdmin(db: Db, actorId: string, userId: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(${ADMIN_LOCK_KEY})`);
+    await assertAdmin(tx, actorId);
+    const [user] = await tx
+      .update(schema.user)
+      .set({ role: "admin" })
+      .where(eq(schema.user.id, userId))
+      .returning({ id: schema.user.id });
+    if (!user) throw new NotFoundError("User not found.");
+  });
 }
 
 export async function listUsers(db: Db, actorId: string): Promise<AdminUserRow[]> {
@@ -67,4 +82,30 @@ export async function listInvites(
 export async function revokeInvite(db: Db, actorId: string, inviteId: string): Promise<void> {
   await assertAdmin(db, actorId);
   await revokeAnyInvite(db, inviteId);
+}
+
+const safetyResourceListSchema = z
+  .array(
+    z.object({
+      name: z.string().trim().min(1).max(80),
+      // <, > and whitespace would break the `(<url>)` link in the safety response.
+      url: z.url({ protocol: /^https?$/ }).refine((u) => !/[<>\s]/.test(u)),
+    }),
+  )
+  .min(1)
+  .max(10);
+
+export async function setSafetyResources(
+  db: Db,
+  actorId: string,
+  list: SafetyResource[],
+): Promise<void> {
+  await assertAdmin(db, actorId);
+  if (list.length === 0) throw new ValidationError("Add at least one safety resource.");
+  const parsed = safetyResourceListSchema.safeParse(list);
+  if (!parsed.success) throw new ValidationError("Each resource needs a name and an http(s) URL.");
+  await db
+    .update(schema.instanceSettings)
+    .set({ safetyResources: parsed.data, updatedAt: new Date() })
+    .where(eq(schema.instanceSettings.id, 1));
 }

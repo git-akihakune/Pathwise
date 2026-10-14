@@ -19,6 +19,7 @@ export function SignupModeSelect({ value }: { value: string }) {
       <Select
         value={value}
         disabled={pending}
+        aria-busy={pending}
         onValueChange={(m) => start(() => setSignupModeAction(m))}
       >
         <SelectTrigger aria-labelledby="signup-mode-label" className="w-48">
