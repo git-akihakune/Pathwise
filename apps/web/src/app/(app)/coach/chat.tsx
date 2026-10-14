@@ -4,15 +4,18 @@ import { useChat } from "@ai-sdk/react";
 import type { Screen } from "@pathwise/core/agent";
 import type { CoachUIMessage } from "@pathwise/core/services/sessions";
 import { DefaultChatTransport } from "ai";
+import { ArrowDown, ArrowUp, MessageCircle, Square } from "lucide-react";
 import { type FormEvent, type KeyboardEvent, useRef, useState, useTransition } from "react";
 import { MessagePart, uuid } from "@/components/chat/message-parts";
 import { groupBySession } from "@/components/chat/session-groups";
 import type { ProposalView } from "@/components/proposal-card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useChatScroll } from "@/components/use-chat-scroll";
 import { loadEarlierAction } from "./actions";
 
 export function Chat({
@@ -42,14 +45,15 @@ export function Chat({
         },
       }),
   );
-  const { messages, setMessages, sendMessage, regenerate, status, error } = useChat<CoachUIMessage>(
-    {
+  const { messages, setMessages, sendMessage, regenerate, stop, status, error } =
+    useChat<CoachUIMessage>({
       id: "coach",
       messages: initialMessages,
       generateId: uuid,
       transport,
-    },
-  );
+    });
+  const scroll = useChatScroll(messages);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [proposals, setProposals] = useState(initialProposals);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [earlierError, setEarlierError] = useState<string>();
@@ -97,6 +101,7 @@ export function Chat({
         return;
       }
       setEarlierError(undefined);
+      scroll.pause();
       setMessages((current) => [...r.messages, ...current]);
       setProposals((current) => ({ ...r.proposals, ...current }));
       setHasMore(r.hasMore);
@@ -113,7 +118,7 @@ export function Chat({
   const unanswered = status === "ready" && !error && last?.role === "user";
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="workspace-section flex min-w-0 flex-col gap-6">
       {hasMore && (
         <div className="flex flex-col items-center gap-2">
           <Button
@@ -121,6 +126,7 @@ export function Chat({
             variant="outline"
             size="sm"
             disabled={loadingEarlier}
+            aria-busy={loadingEarlier}
             onClick={loadEarlier}
           >
             Load earlier messages
@@ -129,10 +135,37 @@ export function Chat({
         </div>
       )}
       {messages.length === 0 && (
-        <p className="text-muted-foreground">
-          Start a conversation. Your coach remembers what you share, and anything it wants to save
-          waits for your approval.
-        </p>
+        <div className="flex min-h-64 flex-col justify-center gap-5 rounded-xl bg-muted/50 p-6 sm:p-8">
+          <span className="flex size-12 items-center justify-center rounded-2xl bg-accent text-primary">
+            <MessageCircle className="size-6" aria-hidden="true" />
+          </span>
+          <div>
+            <h2 className="font-heading text-2xl font-semibold">What's on your mind?</h2>
+            <p className="mt-3 max-w-xl text-muted-foreground">
+              Start a conversation. Your coach remembers what you share, and anything it wants to
+              save waits for your approval.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              "Help me find a career direction",
+              "Let's plan my next step",
+              "I want to reflect on my week",
+            ].map((starter) => (
+              <Button
+                key={starter}
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setInput(starter);
+                  inputRef.current?.focus();
+                }}
+              >
+                {starter}
+              </Button>
+            ))}
+          </div>
+        </div>
       )}
       {groupBySession(messages).map((g) => (
         <section key={g.sessionId} className="flex flex-col gap-3">
@@ -151,8 +184,8 @@ export function Chat({
               key={m.id}
               className={
                 m.role === "user"
-                  ? "ml-auto max-w-[80%] rounded-lg bg-muted px-3 py-2"
-                  : "flex max-w-[90%] flex-col gap-2"
+                  ? "chat-message ml-auto max-w-[92%] rounded-2xl rounded-br-sm bg-accent px-5 py-3 sm:max-w-[80%]"
+                  : "chat-message flex max-w-full flex-col gap-3 px-1 py-2 sm:max-w-[92%]"
               }
             >
               {m.parts.map((part, i) => (
@@ -170,9 +203,17 @@ export function Chat({
           ))}
         </section>
       ))}
-      {status === "submitted" && (
-        <p className="text-sm text-muted-foreground">Coach is thinking…</p>
-      )}
+      <div role="status" className="flex min-h-6 items-center gap-2 text-sm text-muted-foreground">
+        {busy && (
+          <>
+            <span
+              className="size-2 rounded-full bg-primary motion-safe:animate-pulse"
+              aria-hidden="true"
+            />
+            {status === "submitted" ? "Coach is thinking…" : "Coach is replying…"}
+          </>
+        )}
+      </div>
       {error && (
         <Alert variant="destructive">
           <AlertDescription className="flex items-center justify-between gap-4">
@@ -204,7 +245,19 @@ export function Chat({
           </Button>
         </div>
       )}
-      <div className="flex flex-col gap-2 border-t pt-4">
+      <div className="chat-composer flex flex-col gap-3 border-t pt-4">
+        {scroll.away && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="self-center"
+            onClick={scroll.latest}
+          >
+            <ArrowDown aria-hidden="true" />
+            Jump to latest
+          </Button>
+        )}
         {topic ? (
           <div className="flex items-center gap-3 text-sm">
             <span>Your next message starts a focused session: {topic}</span>
@@ -213,7 +266,7 @@ export function Chat({
             </Button>
           </div>
         ) : topicDraft !== null ? (
-          <div className="flex items-end gap-2">
+          <div className="flex flex-wrap items-end gap-3">
             <Label className="flex-col items-start gap-1">
               Topic
               <Input
@@ -221,7 +274,7 @@ export function Chat({
                 maxLength={80}
                 onChange={(e) => setTopicDraft(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                     e.preventDefault();
                     startTopic();
                   }
@@ -242,8 +295,16 @@ export function Chat({
             </Button>
           </div>
         )}
-        <form onSubmit={submit} className="flex items-end gap-2">
+        <Form
+          noValidate
+          trackChanges={false}
+          dirty={Boolean(input.trim())}
+          onSubmit={submit}
+          className="flex items-end gap-3"
+        >
           <Textarea
+            className="resize-none"
+            ref={inputRef}
             aria-label="Message"
             placeholder="Tell your coach what's on your mind…"
             value={input}
@@ -251,11 +312,30 @@ export function Chat({
             onKeyDown={onKeyDown}
             maxLength={20000}
           />
-          <Button type="submit" disabled={busy}>
-            Send
-          </Button>
-        </form>
+          {busy ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label="Stop reply"
+              onClick={() => {
+                void stop();
+              }}
+            >
+              <Square className="size-4" aria-hidden="true" />
+            </Button>
+          ) : (
+            <Button type="submit" disabled={!input.trim()} aria-label="Send">
+              <ArrowUp className="size-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Send</span>
+            </Button>
+          )}
+        </Form>
+        <p className="text-xs text-muted-foreground">
+          Enter to send · Shift + Enter for a new line. Suggestions wait for your approval.
+        </p>
       </div>
+      <div ref={scroll.end} className="h-px" />
     </div>
   );
 }

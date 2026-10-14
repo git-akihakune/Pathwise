@@ -228,7 +228,7 @@ export function ReviewStep({
       )}
 
       {state?.error && <Alert variant="destructive">{state.error}</Alert>}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button type="button" disabled={pending || skipping} onClick={save}>
           Save and continue
         </Button>

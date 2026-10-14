@@ -1,3 +1,5 @@
+export const metadata = { title: "Set up your coach" };
+
 import {
   DOCUMENT_ERRORS,
   type DocumentExtraction,
@@ -15,10 +17,13 @@ import {
   startWorkflow,
   stepMessages,
 } from "@pathwise/core/workflows";
+import { Check } from "lucide-react";
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
 import { RunPoller } from "@/components/run-poller";
 import { StepAttention } from "@/components/step-attention";
 import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
 import { getJobQueue } from "@/lib/jobs";
 import { getServer } from "@/lib/server";
 import { requireSession } from "@/lib/session";
@@ -127,20 +132,33 @@ export default async function OnboardingPage() {
 
   return (
     <section className="flex flex-col gap-6">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Set up your coach</h1>
-          <p className="text-sm text-muted-foreground">
-            Step {n} of {STEPS.length}: {STEPS[n - 1]}
-          </p>
-        </div>
-        <form action={skipOnboardingAction}>
-          <Button type="submit" variant="ghost" size="sm">
-            Skip for now
-          </Button>
-        </form>
-      </header>
-      {body}
+      <PageHeader
+        title="Set up your coach"
+        description={`Step ${n} of ${STEPS.length}: ${STEPS[n - 1]}`}
+        eyebrow="A coach that knows you"
+        action={
+          <Form noValidate action={skipOnboardingAction}>
+            <Button type="submit" variant="ghost" size="sm">
+              Skip for now
+            </Button>
+          </Form>
+        }
+      />
+      <ol aria-label="Setup progress" className="grid gap-3 sm:grid-cols-5">
+        {STEPS.map((label, index) => (
+          <li
+            key={label}
+            aria-current={index + 1 === n ? "step" : undefined}
+            className={`flex items-center gap-3 rounded-lg border p-3 text-sm ${index + 1 === n ? "border-primary/30 bg-accent text-primary" : "bg-card text-muted-foreground"}`}
+          >
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold">
+              {index + 1 < n ? <Check className="size-3.5" aria-label="Completed" /> : index + 1}
+            </span>
+            <span>{label}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="workspace-section">{body}</div>
     </section>
   );
 }

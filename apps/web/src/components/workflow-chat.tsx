@@ -8,7 +8,9 @@ import { type FormEvent, type KeyboardEvent, useState, useTransition } from "rea
 import { MessagePart, uuid } from "@/components/chat/message-parts";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import { useChatScroll } from "@/components/use-chat-scroll";
 
 /** The conversation of one conversational workflow step. `moveOn` skips the step. */
 export function WorkflowChat({
@@ -41,6 +43,7 @@ export function WorkflowChat({
     onFinish: () => router.refresh(),
     onError: () => router.refresh(),
   });
+  const scroll = useChatScroll(messages);
   const [input, setInput] = useState("");
   const [skipping, startSkip] = useTransition();
   const busy = status === "submitted" || status === "streaming";
@@ -69,8 +72,8 @@ export function WorkflowChat({
           key={m.id}
           className={
             m.role === "user"
-              ? "ml-auto max-w-[80%] rounded-lg bg-muted px-3 py-2"
-              : "flex max-w-[90%] flex-col gap-2"
+              ? "chat-message ml-auto max-w-[92%] rounded-2xl rounded-br-sm bg-accent px-5 py-3 sm:max-w-[80%]"
+              : "chat-message flex max-w-full flex-col gap-3 sm:max-w-[92%]"
           }
         >
           {m.parts.map((part, i) => (
@@ -99,8 +102,15 @@ export function WorkflowChat({
           </AlertDescription>
         </Alert>
       )}
-      <form onSubmit={submit} className="flex items-end gap-2 border-t pt-4">
+      <Form
+        noValidate
+        trackChanges={false}
+        dirty={Boolean(input.trim())}
+        onSubmit={submit}
+        className="chat-composer flex flex-wrap items-end gap-3 border-t pt-4"
+      >
         <Textarea
+          className="resize-none"
           aria-label="Message"
           placeholder="Write your answer…"
           value={input}
@@ -108,7 +118,7 @@ export function WorkflowChat({
           onKeyDown={onKeyDown}
           maxLength={20000}
         />
-        <Button type="submit" disabled={busy}>
+        <Button type="submit" disabled={busy || !input.trim()} aria-busy={busy}>
           Send
         </Button>
         <Button
@@ -119,7 +129,8 @@ export function WorkflowChat({
         >
           Move on
         </Button>
-      </form>
+      </Form>
+      <div ref={scroll.end} className="h-px" />
     </div>
   );
 }

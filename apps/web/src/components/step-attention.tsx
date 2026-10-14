@@ -22,8 +22,14 @@ export function StepAttention({
       <p>
         This step didn't finish. {message} {manualHint}
       </p>
-      <div className="flex gap-2">
-        <Button type="button" size="sm" disabled={pending} onClick={() => start(retry)}>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          disabled={pending}
+          aria-busy={pending}
+          onClick={() => start(retry)}
+        >
           Retry
         </Button>
         <Button
@@ -31,6 +37,7 @@ export function StepAttention({
           size="sm"
           variant="outline"
           disabled={pending}
+          aria-busy={pending}
           onClick={() => start(skip)}
         >
           Do it manually

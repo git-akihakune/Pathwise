@@ -1,7 +1,10 @@
+export const metadata = { title: "Weekly check-in" };
+
 import { nextDueAt, type WeekSummary } from "@pathwise/core/services/checkins";
 import { effectiveTimezone, getUserSettings } from "@pathwise/core/services/settings";
 import { getActiveRun, latestRun, manualHint, stepMessages } from "@pathwise/core/workflows";
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 import { RunPoller } from "@/components/run-poller";
 import { StepAttention } from "@/components/step-attention";
 import { Badge } from "@/components/ui/badge";
@@ -113,20 +116,16 @@ export default async function CheckinPage() {
   const weekOf = typeof run?.state.weekOf === "string" ? run.state.weekOf : null;
   return (
     <section className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-2xl font-semibold">Weekly check-in</h1>
-        {weekOf && (
-          <p className="text-sm text-muted-foreground">
-            Week of{" "}
-            {new Intl.DateTimeFormat("en-GB", {
-              day: "numeric",
-              month: "short",
-              timeZone: "UTC",
-            }).format(new Date(`${weekOf}T00:00:00Z`))}
-          </p>
-        )}
-      </header>
-      {body}
+      <PageHeader
+        title="Weekly check-in"
+        eyebrow="Pause. Reflect. Move forward."
+        description={
+          weekOf
+            ? `Week of ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${weekOf}T00:00:00Z`))}`
+            : "A little space to notice your wins and decide what comes next."
+        }
+      />
+      <div className="workspace-section flex flex-col gap-6">{body}</div>
     </section>
   );
 }

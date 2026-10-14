@@ -1,7 +1,10 @@
+export const metadata = { title: "Coach" };
+
 import type { Screen } from "@pathwise/core/agent";
 import { getProviderStatusForUser } from "@pathwise/core/services/providers";
 import { effectiveTimezone, getUserSettings } from "@pathwise/core/services/settings";
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getServer } from "@/lib/server";
 import { requireSession } from "@/lib/session";
@@ -29,7 +32,10 @@ export default async function CoachPage({
   const needsProvider = status.source === "none" || status.authFailed;
   return (
     <section className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">Coach</h1>
+      <PageHeader
+        title="Coach"
+        description="Space to think it through, with a coach that remembers what matters to you."
+      />
       {needsProvider && (
         <Card>
           <CardHeader>

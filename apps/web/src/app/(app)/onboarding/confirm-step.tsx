@@ -2,10 +2,11 @@
 
 import { useActionState } from "react";
 import { ProposalCard, type ProposalView } from "@/components/proposal-card";
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { recoverFormAction } from "@/lib/form-recovery";
 import { confirmAction, type OnboardingFormState } from "./actions";
 
 export function ConfirmStep({
@@ -21,7 +22,7 @@ export function ConfirmStep({
   proposals: ProposalView[];
 }) {
   const [state, submit, pending] = useActionState<OnboardingFormState, FormData>(
-    confirmAction,
+    recoverFormAction(confirmAction),
     undefined,
   );
   return (
@@ -39,20 +40,19 @@ export function ConfirmStep({
           ))}
         </section>
       )}
-      <form action={submit} className="flex flex-col gap-3">
+      <Form noValidate result={state} action={submit} className="flex flex-col gap-3">
         <input type="hidden" name="runId" value={runId} />
         <input type="hidden" name="stepId" value={stepId} />
         <Label className="flex-col items-start gap-1">
           Anything I got wrong?
-          <Textarea name="correction" maxLength={1000} />
+          <Textarea className="resize-none" name="correction" maxLength={1000} />
         </Label>
-        {state?.error && <Alert variant="destructive">{state.error}</Alert>}
         <div>
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" disabled={pending} aria-busy={pending}>
             Looks right
           </Button>
         </div>
-      </form>
+      </Form>
     </div>
   );
 }

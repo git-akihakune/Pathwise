@@ -3,8 +3,10 @@
 import { useActionState, useRef, useState, useTransition } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { recoverFormAction } from "@/lib/form-recovery";
 import {
   advanceAction,
   attachUploadAction,
@@ -40,7 +42,7 @@ export function IngestStep({
   const [uploading, startUpload] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
   const [pasted, paste, pasting] = useActionState<OnboardingFormState, FormData>(
-    pasteTextAction,
+    recoverFormAction(pasteTextAction),
     undefined,
   );
 
@@ -82,7 +84,12 @@ export function IngestStep({
       <div className="flex flex-col gap-2">
         <Label className="flex-col items-start gap-1">
           File
-          <input ref={fileRef} type="file" accept=".pdf,.docx,.txt" className="text-sm" />
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf,.docx,.txt"
+            className="max-w-full text-sm"
+          />
         </Label>
         {uploadError && <Alert variant="destructive">{uploadError}</Alert>}
         <div>
@@ -91,28 +98,27 @@ export function IngestStep({
           </Button>
         </div>
       </div>
-      <form action={paste} className="flex flex-col gap-2">
+      <Form noValidate result={pasted} action={paste} className="flex flex-col gap-2">
         <input type="hidden" name="runId" value={runId} />
         <input type="hidden" name="kind" value={kind} />
         <Label className="flex-col items-start gap-1">
           Or paste text
-          <Textarea name="text" rows={6} maxLength={100000} />
+          <Textarea className="resize-none" name="text" rows={6} maxLength={100000} />
         </Label>
-        {pasted?.error && <Alert variant="destructive">{pasted.error}</Alert>}
         <div>
           <Button type="submit" variant="outline" disabled={pasting || pending}>
             Use this text
           </Button>
         </div>
-      </form>
-      <form action={advanceAction}>
+      </Form>
+      <Form noValidate action={advanceAction}>
         <input type="hidden" name="runId" value={runId} />
         <input type="hidden" name="stepId" value={stepId} />
         <input type="hidden" name="skip" value="1" />
         <Button type="submit" variant="ghost">
           Skip this step
         </Button>
-      </form>
+      </Form>
     </div>
   );
 }
