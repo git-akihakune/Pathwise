@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="88" viewBox="0 0 360 88" role="img" aria-labelledby="title">
+  <title id="title">Pathwise</title>
+  <rect x="1" y="1" width="358" height="86" rx="20" fill="#172E43"/>
+  <rect x="22" y="19" width="50" height="50" rx="16" fill="#176B63"/>
+  <g transform="translate(31 27) scale(1.35)" fill="#FFFFFF">
+    <path d="M6 19V12a4 4 0 0 1 4-4h4a4 4 0 0 0 4-4" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="6" cy="19" r="2.5"/>
+    <circle cx="12" cy="8" r="2.5"/>
+    <circle cx="18" cy="4" r="2.5"/>
+  </g>
+  <text x="91" y="58" fill="#FFFFFF" font-family="Manrope, system-ui, -apple-system, sans-serif" font-size="38" font-weight="700" letter-spacing="-1">Pathwise</text>
+</svg>
