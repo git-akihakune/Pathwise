@@ -24,12 +24,14 @@ export function ProviderBanner({ status, isAdmin }: { status: Status; isAdmin: b
     return null;
   }
   return (
-    <div className="mx-auto max-w-5xl px-4 pt-4">
+    <div className="mx-auto w-full max-w-[76rem] px-5 pt-6 sm:px-8 lg:px-10">
       <Alert>
         <AlertTitle>{title}</AlertTitle>
         {link && (
           <AlertDescription>
-            <Link href={link.href}>{link.text}</Link>
+            <Link href={link.href} className="font-medium underline underline-offset-4">
+              {link.text}
+            </Link>
           </AlertDescription>
         )}
       </Alert>
