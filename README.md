@@ -16,9 +16,9 @@
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
-![The Pathwise Today workspace showing a career direction, milestones, weekly actions, and a coach suggestion awaiting approval.](docs/assets/today.png)
+![Pathwise on a laptop and phone, with each screen split between the light and dark themes to show the desktop workspace and responsive mobile layout.](docs/assets/pathwise-devices.png)
 
-*The Today workspace, shown with the disposable demo persona.*
+*At your desk or on the go, in light or dark mode. Real demo-persona screenshots in programmatically rendered device frames.*
 
 ## From a direction to your next step
 

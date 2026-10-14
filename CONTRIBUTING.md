@@ -68,6 +68,20 @@ Work on `dev` and open PRs against `main`. Use conventional commits (`feat:`, `f
 
 Pathwise is [AGPL-3.0](LICENSE). Contributions use the same license (inbound = outbound). Preserve [NOTICE](NOTICE), including source attribution, and update pinned taxonomy versions truthfully when the bundle changes.
 
+## Rendering the README device preview
+
+The README hero uses real screenshots in HTML/CSS device frames, rendered to PNG with Playwright. Each screen is split vertically between the light and dark themes. No generated UI or new dependency is needed.
+
+To rebuild the image from the committed captures:
+
+```bash
+node scripts/readme-devices.mjs
+```
+
+To refresh the source images, sign in as the disposable demo persona and capture Today in both themes at **1440×900** (desktop) and **390×844** (mobile). Save the four PNGs as `desktop-light.png`, `desktop-dark.png`, `mobile-light.png`, and `mobile-dark.png` under `docs/assets/screenshots/`. Use viewport screenshots (`fullPage: false`), wait for fonts to load, and disable animations. Use a production build or hide the Next.js development overlay with screenshot option `style: "nextjs-portal { display: none !important; }"`. Preserve the same account, page, and scroll position in both themes so the split aligns. Keep credentials and real user data out of captures.
+
+Run the renderer and preview `docs/assets/pathwise-devices.png` before committing the updated images.
+
 ## Recording the demo GIF
 
 Run `SEED_DEMO=true docker compose up -d` and `docker compose exec worker pathwise admin reset-password demo@pathwise.local`. Use the disposable demo account. Record 15–20 seconds at 1280×720 with Peek, Kap, or ScreenToGif: sign in → Today → Coach (scroll the seeded conversation) → Plan. Do not include the operator terminal or real credentials.
