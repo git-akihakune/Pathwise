@@ -1,3 +1,5 @@
+export const metadata = { title: "Forgot password" };
+
 import Link from "next/link";
 import { connection } from "next/server";
 import { OriginBanner } from "@/components/origin-banner";
@@ -10,7 +12,7 @@ export default async function ForgotPasswordPage() {
   await connection();
   const { config } = getServer();
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 p-4">
+    <div className="flex flex-col gap-4">
       <OriginBanner appUrl={config.appUrl} />
       <Card>
         <CardHeader>
@@ -38,6 +40,6 @@ export default async function ForgotPasswordPage() {
           </Link>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }

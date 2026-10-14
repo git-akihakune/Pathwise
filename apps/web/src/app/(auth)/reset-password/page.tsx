@@ -1,3 +1,5 @@
+export const metadata = { title: "Reset password" };
+
 import Link from "next/link";
 import { connection } from "next/server";
 import { OriginBanner } from "@/components/origin-banner";
@@ -16,7 +18,7 @@ export default async function ResetPasswordPage({
   const { token, error } = await searchParams;
   const invalid = Boolean(error) || !token;
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 p-4">
+    <div className="flex flex-col gap-4">
       <OriginBanner appUrl={getServer().config.appUrl} />
       <Card>
         <CardHeader>
@@ -41,6 +43,6 @@ export default async function ResetPasswordPage({
           </Link>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }

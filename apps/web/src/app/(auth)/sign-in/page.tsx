@@ -1,3 +1,5 @@
+export const metadata = { title: "Sign in" };
+
 import Link from "next/link";
 import { connection } from "next/server";
 import { AuthForm } from "@/components/auth-form";
@@ -17,7 +19,7 @@ export default async function SignInPage({
   const { next, reset, deleted } = await searchParams;
   const returnTo = safeNext(next);
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 p-4">
+    <div className="flex flex-col gap-4">
       <OriginBanner appUrl={getServer().config.appUrl} />
       <Card>
         <CardHeader>
@@ -43,6 +45,6 @@ export default async function SignInPage({
           </Link>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }

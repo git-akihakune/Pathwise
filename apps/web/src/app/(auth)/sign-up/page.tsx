@@ -1,3 +1,5 @@
+export const metadata = { title: "Sign up" };
+
 import { countAdmins } from "@pathwise/core/auth";
 import { getInstanceSettings } from "@pathwise/core/instance";
 import Link from "next/link";
@@ -16,7 +18,7 @@ export default async function SignUpPage() {
   const showForm = first || signupMode === "open";
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 p-4">
+    <div className="flex flex-col gap-4">
       <OriginBanner appUrl={config.appUrl} />
       <Card>
         <CardHeader>
@@ -48,6 +50,6 @@ export default async function SignUpPage() {
           </Link>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }
