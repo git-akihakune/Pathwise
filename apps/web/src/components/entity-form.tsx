@@ -1,10 +1,11 @@
 "use client";
 
 import { createContext, type ReactNode, useActionState, useContext, useState } from "react";
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import type { FormState } from "@/lib/entity-action";
+import { recoverFormAction } from "@/lib/form-recovery";
 
 const OpenFormContext = createContext<{ open: string | null; setOpen: (k: string | null) => void }>(
   { open: null, setOpen: () => {} },
@@ -48,12 +49,18 @@ export function EntityForm({
   children: ReactNode;
 }) {
   const [state, submit, pending] = useActionState<FormState, FormData>(async (prev, fd) => {
-    const result = await action(prev, fd);
+    const result = await recoverFormAction(action)(prev, fd);
     if (!result?.error) onDone?.();
     return result;
   }, undefined);
   return (
-    <form action={submit} className="flex flex-col gap-3 rounded-md border p-3">
+    <Form
+      result={state}
+      noValidate
+      error={state?.error}
+      action={submit}
+      className="flex flex-col gap-4 rounded-xl border bg-muted/30 p-5"
+    >
       {entity && (
         <>
           <input type="hidden" name="id" value={entity.id} />
@@ -61,9 +68,8 @@ export function EntityForm({
         </>
       )}
       {children}
-      {state?.error && <Alert variant="destructive">{state.error}</Alert>}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={pending}>
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={pending} aria-busy={pending}>
           {submitLabel}
         </Button>
         {cancel ?? (
@@ -72,6 +78,6 @@ export function EntityForm({
           </Button>
         )}
       </div>
-    </form>
+    </Form>
   );
 }

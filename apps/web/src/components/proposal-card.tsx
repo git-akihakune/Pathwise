@@ -12,7 +12,8 @@ import {
 import { Field } from "@/components/entity-form";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -202,7 +203,7 @@ function EditForm({
     onSave(edit.target === pl ? changed : { ...pl, fields: changed });
   };
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3">
+    <Form noValidate onSubmit={submit} className="flex flex-col gap-3">
       {isMemory && (
         <Field label="Category">
           <select
@@ -221,13 +222,13 @@ function EditForm({
       {edit.keys.map((key) => (
         <Field key={key} label={label(key)}>
           {LONG_FIELDS.has(key) ? (
-            <Textarea name={key} defaultValue={str(edit.target[key])} />
+            <Textarea className="resize-none" name={key} defaultValue={str(edit.target[key])} />
           ) : (
             <Input name={key} defaultValue={str(edit.target[key])} />
           )}
         </Field>
       ))}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button type="submit" size="sm" disabled={disabled}>
           Save and approve
         </Button>
@@ -235,7 +236,7 @@ function EditForm({
           Cancel
         </Button>
       </div>
-    </form>
+    </Form>
   );
 }
 
@@ -268,7 +269,10 @@ export function ProposalCard({
 
   if (!proposal) {
     return (
-      <div data-testid="proposal-card" className="rounded-md border p-4 text-sm">
+      <div
+        data-testid="proposal-card"
+        className="min-h-32 rounded-xl border bg-accent/40 p-5 text-sm"
+      >
         {error ?? "Loading suggestion…"}
       </div>
     );
@@ -289,7 +293,10 @@ export function ProposalCard({
   const prompt = `Please redo your suggestion "${subject(proposal)}" using my current data.`;
 
   return (
-    <div data-testid="proposal-card" className="flex flex-col gap-3 rounded-md border p-4">
+    <div
+      data-testid="proposal-card"
+      className="flex flex-col gap-4 rounded-xl border border-primary/20 bg-accent/40 p-5"
+    >
       <div className="flex items-center justify-between gap-2">
         <h3 className="font-medium">{TITLES[proposal.kind]}</h3>
         {proposal.status === "approved" && <Badge>Approved</Badge>}
@@ -299,6 +306,7 @@ export function ProposalCard({
         <EditForm
           p={proposal}
           disabled={pending}
+          aria-busy={pending}
           onSave={approve}
           onCancel={() => setEditing(false)}
         />
@@ -307,8 +315,14 @@ export function ProposalCard({
       )}
       {error && <Alert variant="destructive">{error}</Alert>}
       {proposal.status === "pending" && !editing && (
-        <div className="flex gap-2">
-          <Button type="button" size="sm" disabled={pending} onClick={() => approve()}>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            disabled={pending}
+            aria-busy={pending}
+            onClick={() => approve()}
+          >
             Approve
           </Button>
           {editable(proposal) && (
@@ -317,6 +331,7 @@ export function ProposalCard({
               size="sm"
               variant="outline"
               disabled={pending}
+              aria-busy={pending}
               onClick={() => setEditing(true)}
             >
               Edit
@@ -327,6 +342,7 @@ export function ProposalCard({
             size="sm"
             variant="outline"
             disabled={pending}
+            aria-busy={pending}
             onClick={() => run(() => rejectProposalAction(proposal.id))}
           >
             Reject
@@ -341,11 +357,12 @@ export function ProposalCard({
               Regenerate against current data
             </Button>
           ) : (
-            <Button asChild size="sm" variant="outline">
-              <Link href={`/coach?prompt=${encodeURIComponent(prompt)}`}>
-                Regenerate against current data
-              </Link>
-            </Button>
+            <Link
+              className={buttonVariants({ size: "sm", variant: "outline" })}
+              href={`/coach?prompt=${encodeURIComponent(prompt)}`}
+            >
+              Regenerate against current data
+            </Link>
           )}
         </div>
       )}

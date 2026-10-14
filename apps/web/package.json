@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@ai-sdk/react": "4.0.140",
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@fontsource-variable/source-sans-3": "^5.3.1",
     "@pathwise/core": "workspace:*",
     "@tailwindcss/postcss": "^4.3.3",
     "ai": "~7.0.137",
