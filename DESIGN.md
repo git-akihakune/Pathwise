@@ -73,7 +73,7 @@ A career field guide: a quiet workspace for reflection, with a visible route fro
 
 ## Colors
 
-Teal primary actions, ink text and sidebar, cool pale canvas, white panels. Muted copy remains legible. Pale teal marks selection without relying on color alone; current navigation also has `aria-current`. Field boundaries use the stronger outline token for contrast against white. Red belongs to errors and destructive actions. No theme switch is added; the shipped light workspace has a deliberately dark navigation surface. Existing `.dark` tokens remain semantically mapped for future consumers. Forced colors use system colors.
+Teal primary actions, ink text and sidebar, cool pale canvas, white panels. Muted copy remains legible. Pale teal marks selection without relying on color alone; current navigation also has `aria-current`. Field boundaries use the stronger outline token for contrast against white. Red belongs to errors and destructive actions. Light, Dark, and System modes share the teal-and-ink identity. System is the default; a browser-local preference persists explicit choices and synchronizes across tabs. A static pre-paint script applies the saved or system theme before hydration. The shared ThemeSelect uses the canonical Radix Select and is available in desktop/mobile headers and authentication. Dark mode uses a deep ink canvas (#101C29), blue panels (#182A3A), pale ink (#E3EDF5), muted copy (#AFC0CE), and soft teal (#7ED4C3) with dark primary-button text (#102C29). Runtime `.dark` overrides own every semantic role, field boundary, focus ring, chart, and scrollbar color. Forced colors use system colors.
 
 | Document role | Runtime variable | Consumer |
 |---|---|---|

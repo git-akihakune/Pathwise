@@ -15,7 +15,7 @@ Pathwise is a global, English-first career coach. Primary jobs are exploration, 
 
 ## Visual contract
 
-`DESIGN.md` records the approved identity. Runtime CSS in `apps/web/src/app/globals.css` is canonical, adapted through Tailwind v4 semantic tokens. The light workspace and ink sidebar are the shipped theme. Change this document, shared primitives, and runtime tokens together when changing a durable contract.
+`DESIGN.md` records the approved identity. Runtime CSS in `apps/web/src/app/globals.css` is canonical, adapted through Tailwind v4 semantic tokens. Light, Dark, and System modes share the same semantic tokens and ink sidebar. System follows browser preference until explicitly overridden; the choice persists locally, synchronizes across tabs, and applies before hydration. Storage failures retain a usable in-memory choice. ThemeSelect is the canonical accessible selector across desktop/mobile headers and auth screens. Change this document, shared primitives, and runtime tokens together when changing a durable contract.
 
 ## Canonical UI Map
 
@@ -24,6 +24,7 @@ Pathwise is a global, English-first career coach. Primary jobs are exploration, 
 | Select/Listbox | `components/ui/select.tsx`; native selects for simple form values | DESIGN.md and this contract | authored provider popup; native simple dropdowns | settings E2E; keyboard and open popup |
 | Date | `components/ui/input.tsx` | core date-only and schedule contracts | native date/time; typed month/year experience values | plan and settings E2E |
 | Form | `components/entity-form.tsx`, auth/provider forms, shared field controls | core server validation | create/edit, workflow, settings | domain and auth E2E |
+| Theme | `components/theme-provider.tsx`, `components/theme-select.tsx`, `lib/theme-script.ts` | DESIGN.md; globals.css theme tokens | Light, Dark, System; browser-local preference | theme E2E; pre-hydration, mobile, keyboard, storage failure |
 | Scrollbar | `app/globals.css` | DESIGN.md | stable document gutter; horizontal table overflow | computed styles and narrow-viewport E2E |
 | CRUD | server actions through user-scoped core services | approved v1 spec and existing routes | inline save; Stories return to list | profile, plan, stories E2E |
 

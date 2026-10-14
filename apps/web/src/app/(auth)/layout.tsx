@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Brand } from "@/components/brand";
 import { CareerJourney } from "@/components/career-journey";
+import { ThemeSelect } from "@/components/theme-select";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
@@ -42,9 +43,14 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         </p>
       </aside>
       <div className="flex min-w-0 flex-col bg-card px-6 py-8 sm:px-12">
-        <Link href="/sign-in" className="mb-8 w-fit lg:hidden">
-          <Brand />
-        </Link>
+        <div className="mb-8 flex items-center justify-between gap-3">
+          <Link href="/sign-in" className="w-fit lg:hidden">
+            <Brand />
+          </Link>
+          <div className="ml-auto">
+            <ThemeSelect />
+          </div>
+        </div>
         <div className="auth-content mx-auto flex w-full max-w-[420px] flex-1 flex-col justify-center py-6 lg:py-12">
           {children}
         </div>

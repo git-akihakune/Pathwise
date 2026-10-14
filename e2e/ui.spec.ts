@@ -1,5 +1,43 @@
 import { expect, test } from "@playwright/test";
 
+test("workspace theme survives navigation and stays accessible on mobile", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light", reducedMotion: "no-preference" });
+  await page.goto("/");
+  const theme = page.getByRole("combobox", { name: "Theme", exact: true });
+  await theme.click();
+  await page.getByRole("option", { name: "Dark", exact: true }).click();
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await page.screenshot({
+    path: test.info().outputPath("dark-desktop.png"),
+    fullPage: true,
+    animations: "disabled",
+  });
+  for (const route of ["/profile", "/plan", "/stories", "/settings", "/coach", "/admin"]) {
+    await page.goto(route);
+    await expect(page.locator("main h1")).toBeVisible();
+    await expect(theme).toContainText("Dark");
+  }
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto("/plan");
+  await expect(theme).toBeVisible();
+  await page.screenshot({
+    path: test.info().outputPath("dark-mobile.png"),
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  const drawer = page.getByRole("dialog", { name: "Navigation", exact: true });
+  await page.keyboard.press("Escape");
+  await expect(drawer).toBeHidden();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  await page.keyboard.press("Escape");
+  await theme.click();
+  await page.getByRole("option", { name: "Light", exact: true }).click();
+  await expect(page.locator("html")).not.toHaveClass(/dark/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 // Uses the shared admin session. These checks protect the responsive shell and keyboard flows.
 test("navigation identifies the current screen and nested story editor", async ({ page }) => {
   await page.goto("/profile");

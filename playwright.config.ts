@@ -58,7 +58,7 @@ export default defineConfig({
     },
     {
       name: "ui",
-      testMatch: "ui.spec.ts",
+      testMatch: /(ui|theme)\.spec\.ts/,
       dependencies: ["domain-setup"],
       use: { ...devices["Desktop Chrome"], storageState: ADA_STATE },
     },

@@ -17,6 +17,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOutAction } from "@/app/(auth)/actions";
 import { Brand } from "@/components/brand";
+import { ThemeSelect } from "@/components/theme-select";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
@@ -147,21 +148,24 @@ export function AppNav({ isAdmin, name }: { isAdmin: boolean; name: string }) {
         <Link href="/" aria-label="Pathwise home">
           <Brand className="text-lg" />
         </Link>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger
-            aria-label="Open navigation"
-            className={buttonVariants({ variant: "outline", size: "icon" })}
-          >
-            <Menu className="size-5" aria-hidden="true" />
-          </DialogTrigger>
-          <DialogContent className="navigation-drawer inset-y-0 left-0 top-0 h-dvh max-h-dvh w-[min(320px,90vw)] max-w-none translate-x-0 translate-y-0 gap-0 rounded-none bg-sidebar p-0 text-sidebar-foreground sm:max-w-none data-open:animate-none data-closed:animate-none">
-            <DialogTitle className="sr-only">Navigation</DialogTitle>
-            <DialogDescription className="sr-only">
-              Navigate your Pathwise workspace.
-            </DialogDescription>
-            <Navigation isAdmin={isAdmin} name={name} onNavigate={() => setOpen(false)} />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <ThemeSelect />
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger
+              aria-label="Open navigation"
+              className={buttonVariants({ variant: "outline", size: "icon" })}
+            >
+              <Menu className="size-5" aria-hidden="true" />
+            </DialogTrigger>
+            <DialogContent className="navigation-drawer inset-y-0 left-0 top-0 h-dvh max-h-dvh w-[min(320px,90vw)] max-w-none translate-x-0 translate-y-0 gap-0 rounded-none bg-sidebar p-0 text-sidebar-foreground sm:max-w-none data-open:animate-none data-closed:animate-none">
+              <DialogTitle className="sr-only">Navigation</DialogTitle>
+              <DialogDescription className="sr-only">
+                Navigate your Pathwise workspace.
+              </DialogDescription>
+              <Navigation isAdmin={isAdmin} name={name} onNavigate={() => setOpen(false)} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </header>
       <div className="hidden h-16 items-center justify-between border-b border-border/70 bg-card/60 px-10 text-sm lg:flex">
         <div className="flex items-center gap-2 text-muted-foreground">
@@ -169,10 +173,13 @@ export function AppNav({ isAdmin, name }: { isAdmin: boolean; name: string }) {
           <ChevronRight className="size-3.5" aria-hidden="true" />
           <span className="font-medium text-foreground">{current?.label ?? "Workspace"}</span>
         </div>
-        <span className="flex items-center gap-2 text-xs text-muted-foreground">
-          <ShieldCheck className="size-3.5" aria-hidden="true" />
-          Your changes stay in your control
-        </span>
+        <div className="flex items-center gap-5">
+          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            <ShieldCheck className="size-3.5" aria-hidden="true" />
+            Your changes stay in your control
+          </span>
+          <ThemeSelect />
+        </div>
       </div>
     </>
   );
