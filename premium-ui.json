@@ -1,0 +1,17 @@
+{
+  "profile": "product-admin",
+  "sourceRoots": ["apps/web/src"],
+  "locale": "en-GB",
+  "canonicalMap": "UX-CONTRACT.md",
+  "requiredCapabilities": ["Select/Listbox", "Date", "Form", "Scrollbar", "CRUD"],
+  "ownership": { "Select/Listbox": "native", "Date": "native" },
+  "requiredCommands": ["lint", "typecheck", "unit", "build", "e2e"],
+  "commands": {
+    "lint": "pnpm lint",
+    "typecheck": "pnpm typecheck",
+    "unit": "pnpm test",
+    "build": "pnpm build",
+    "e2e": "pnpm e2e"
+  },
+  "evidence": { "crudFullFlow": "e2e/profile.spec.ts", "failurePaths": "e2e/coach.spec.ts" }
+}
